@@ -1,0 +1,87 @@
+[gd_scene load_steps=16 format=2]
+
+[ext_resource path="res://addons/debug_event_recorder/FlyCamera.gd" type="Script" id=1]
+[ext_resource path="res://checker1.png" type="Texture" id=2]
+[ext_resource path="res://assets/test_vehicles/test_car.tscn" type="PackedScene" id=3]
+[ext_resource path="res://addons/bicycle/PlayerController.gd" type="Script" id=4]
+[ext_resource path="res://assets/test_vehicles/test_arena.gd" type="Script" id=5]
+
+[sub_resource type="BoxShape" id=5]
+extents = Vector3( 50, 10, 50 )
+
+[sub_resource type="PlaneMesh" id=6]
+size = Vector2( 100, 100 )
+
+[sub_resource type="SpatialMaterial" id=7]
+albedo_texture = ExtResource( 2 )
+uv1_scale = Vector3( 10, 10, 1 )
+
+[sub_resource type="BoxShape" id=8]
+extents = Vector3( 10, 1, 10 )
+
+[sub_resource type="CubeMesh" id=9]
+size = Vector3( 20, 2, 20 )
+
+[sub_resource type="BoxShape" id=11]
+extents = Vector3( 4, 0.3, 4 )
+
+[sub_resource type="CubeMesh" id=12]
+size = Vector3( 8, 0.6, 8 )
+
+[sub_resource type="SpatialMaterial" id=13]
+albedo_texture = ExtResource( 2 )
+
+[sub_resource type="ProceduralSky" id=4]
+
+[sub_resource type="Environment" id=10]
+background_mode = 2
+background_sky = SubResource( 4 )
+
+[node name="Spatial" type="Spatial"]
+script = ExtResource( 5 )
+
+[node name="StaticBody" type="StaticBody" parent="."]
+
+[node name="CollisionShape" type="CollisionShape" parent="StaticBody"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0 )
+shape = SubResource( 5 )
+
+[node name="MeshInstance" type="MeshInstance" parent="StaticBody"]
+mesh = SubResource( 6 )
+skeleton = NodePath("../CollisionShape")
+material/0 = SubResource( 7 )
+
+[node name="StaticBody2" type="StaticBody" parent="."]
+transform = Transform( 0.996317, -0.0857473, 0, 0.0857473, 0.996317, 0, 0, 0, 1, 9.34247, -0.230942, 4.88153 )
+
+[node name="CollisionShape" type="CollisionShape" parent="StaticBody2"]
+shape = SubResource( 8 )
+
+[node name="MeshInstance" type="MeshInstance" parent="StaticBody2"]
+mesh = SubResource( 9 )
+skeleton = NodePath("../CollisionShape")
+material/0 = SubResource( 7 )
+
+[node name="RigidBody" type="RigidBody" parent="."]
+transform = Transform( 0.984328, -0.176346, 0, 0.176346, 0.984328, 0, 0, 0, 1, 10.5686, 1.6471, 5.7094 )
+
+[node name="CollisionShape" type="CollisionShape" parent="RigidBody"]
+shape = SubResource( 11 )
+
+[node name="MeshInstance" type="MeshInstance" parent="RigidBody"]
+mesh = SubResource( 12 )
+material/0 = SubResource( 13 )
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource( 10 )
+
+[node name="PlayerController" type="Node" parent="."]
+script = ExtResource( 4 )
+
+[node name="FlyCamera" type="Camera" parent="."]
+transform = Transform( 0.636509, -0.0168788, 0.771084, 0, 0.999761, 0.0218844, -0.771269, -0.0139296, 0.636357, 15.322, 4.21084, 9.49286 )
+script = ExtResource( 1 )
+start_paused = true
+
+[node name="Car" parent="." instance=ExtResource( 3 )]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 9.87194, 3.56745, 4.64761 )

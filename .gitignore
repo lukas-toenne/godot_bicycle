@@ -11,7 +11,3 @@ data_*/
 # Ignore build files
 .sconsign.dblite
 .vs/
-
-# Exclude the project files for now
-blender/
-project/
