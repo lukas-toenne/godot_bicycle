@@ -53,11 +53,13 @@ func _physics_process(delta):
 
 func _integrate_forces(state):
 	_ray_cast_wheels(state)
-	_apply_suspension(state)
+#	_apply_suspension(state)
 
 	_compute_wheel_torque(state)
+	
+	_solve_wheel_constraints(state)
 
-	_apply_friction(state)
+#	_apply_friction(state)
 	_update_wheel_rotation(state)
 
 
@@ -107,10 +109,16 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 				# Note: DO NOT access the ground object's state from the physics server here,
 				# as that will invalidate all future impulse addition!
 				info.inv_ground_mass = 1.0 / info.ground_object.mass if info.ground_object.mass > 0.0 else 0.0
+				info.inv_ground_inertia = info.ground_object.get_inverse_inertia_tensor()
+				info.ground_linear_velocity = info.ground_object.linear_velocity
+				info.ground_angular_velocity = info.ground_object.angular_velocity
 				var ground_vel_at_contact = info.ground_object.linear_velocity + info.ground_object.angular_velocity.cross(info.contact_point - info.ground_object.transform.origin)
 				info.relative_contact_velocity = chassis_vel_at_contact - ground_vel_at_contact
 			else:
 				info.inv_ground_mass = 0.0
+				info.inv_ground_inertia = Basis(Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0))
+				info.ground_linear_velocity = Vector3(0, 0, 0)
+				info.ground_angular_velocity = Vector3(0, 0, 0)
 				info.relative_contact_velocity = chassis_vel_at_contact
 
 			# Wheel direction projected on contact normal (cosine of contact angle with the ground), must be -1..0 for valid contact.
@@ -214,10 +222,35 @@ func _apply_friction(state: PhysicsDirectBodyState):
 
 # NOTE: Both Bullet and Godot code for this is very old and without comment.
 # What is happening here is that the penetration and friction constraints are
-# solved using an implicit method, with an approximate Jacobian inversion.
-# The approach is described quite well in Daniel Chappuis
-#   "Constraints Derivation for Rigid Body Simulation in 3D"
-# https://danielchappuis.ch/download/ConstraintsDerivationRigidBody3D.pdf
+# solved using an implicit method with Baumgarte stabilization and approximate
+# Jacobian inversion.
+#
+# Some educational resources:
+# - Daniel Chappuis, "Constraints Derivation for Rigid Body Simulation in 3D"
+#   https://danielchappuis.ch/download/ConstraintsDerivationRigidBody3D.pdf
+# - Ming-Lun Chou, Physics Constraints in Games
+#   https://www.youtube.com/watch?v=MTVdBgQY9LY
+#   (Part 2 explains contact constraints specifically)
+#
+# TL;DR steps:
+# 1) The constraint function C describes the condition that should be satisfied:
+#      C(X, V, R, W) = 0   [X: position, V: velocity, R: orientation, W: angular velocity]
+# 2) Compute derivative (Jacobian) and set to zero to enforce the constraint.
+#      J * Q = dC/dq * Q = 0   [Q is combined state vector (X, V, R, W)]
+# 3) Setting J to zero only enforces that C is constant, but it can still have an offset.
+#    To make sure it returns to zero, add a bias factor b:
+#      J * Q + b = 0
+#    Baumgarte stabilization defines b as
+#      b = beta / h   [h: time step, beta: correction factor in 0..1]
+#    Correction factor can be defined in terms of spring damping (see below).
+# 4) Impulse correction: To correct velocity such that the constraint is valid,
+#    apply a correctional impulse M * dV. A Lagrange multiplier is used to
+#    solve for dV:
+#      M * (V1 - V0) = J^T * lambda   [M: diagonal mass matrix, V0: unconstraint velocity, V1: corrected velocity]
+# 5) Lagrange multiplier lambda is expressed through effective mass:
+#      M_eff = (J * M^(-1) * J^T)^(-1)
+#      lambda = -M_eff * (J * V0 + b)
+
 func _calc_rolling_friction(wheel: BicycleWheel, max_impulse: float):
 	var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
 	var normal := raycast.contact_normal
@@ -225,18 +258,63 @@ func _calc_rolling_friction(wheel: BicycleWheel, max_impulse: float):
 	
 	var forward_velocity = raycast.relative_contact_velocity.dot(forward)
 
-	var impulse = forward_velocity * 
+	# TODO
+	var impulse = forward_velocity * 0.0
 	return clamp(impulse, -max_impulse, max_impulse)
 
 
 # Solves bilateral constraint between the wheel and the ground object.
 # This takes into account the suspension spring between vehicle body and wheel,
 # as well as the friction between wheel and ground object.
-# The dynamic equations between these objects are solved implicitly,
-# resulting in the impulses on all 3 objects required to satisfy the constraint.
-func _solve_wheel_contact(wheel: BicycleWheel):
-	# TODO
-	pass
+func _solve_wheel_constraints(state: PhysicsDirectBodyState):
+	var contact_bias = 0.5
+	
+	for wheel in _wheels:
+		# Variables to solve for:
+		#   Q = [Q_chassis, Q_ground]
+		#     = [Vc, Wc,    Vg, Wg]
+		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+		if !raycast.is_in_contact:
+			continue
+
+		var normal := raycast.contact_normal
+		var offset_chassis = raycast.contact_point - state.transform.origin
+		var offset_ground = raycast.contact_point - raycast.ground_object.transform.origin
+
+		# Jacobian elements for a contact constraint
+		var jac_vel_chassis = -normal
+		var jac_rot_chassis = -offset_chassis.cross(normal)
+		var jac_vel_ground = normal
+		var jac_rot_ground = offset_ground.cross(normal)
+
+		# Effective mass
+		var inv_m_chassis = state.inverse_mass
+		var inv_I_chassis = state.principal_inertia_axes * state.principal_inertia_axes.transposed().scaled(state.inverse_inertia)
+		var inv_m_ground = raycast.inv_ground_mass
+		var inv_I_ground = raycast.inv_ground_inertia
+		var M_eff = 1.0 / (jac_vel_chassis.dot(inv_m_chassis * jac_vel_chassis) 
+						 + jac_rot_chassis.dot(inv_I_chassis * jac_rot_chassis)
+						 + jac_vel_ground.dot(inv_m_ground * jac_vel_ground)
+						 + jac_rot_ground.dot(inv_I_ground * jac_rot_ground))
+
+		# Lagrange multiplier
+		var vel_chassis = state.linear_velocity
+		var rot_chassis = state.angular_velocity
+		var vel_ground = raycast.ground_linear_velocity
+		var rot_ground = raycast.ground_angular_velocity
+		var lambda = -M_eff * (jac_vel_chassis.dot(vel_ground)
+							 + jac_rot_chassis.dot(rot_chassis)
+							 + jac_vel_ground.dot(vel_ground)
+							 + jac_rot_ground.dot(rot_ground)
+							 + contact_bias)
+		
+		var impulse_chassis = jac_vel_chassis * lambda
+		var torque_chassis = jac_rot_chassis * lambda
+		var impulse_ground = jac_vel_ground * lambda
+		var torque_ground = jac_rot_ground * lambda
+
+		state.apply_central_impulse(impulse_chassis)
+		state.apply_torque_impulse(torque_chassis)
 
 
 func _update_wheel_rotation(state: PhysicsDirectBodyState):

@@ -58,6 +58,7 @@ transform = Transform( 0.996317, -0.0857473, 0, 0.0857473, 0.996317, 0, 0, 0, 1,
 shape = SubResource( 8 )
 
 [node name="MeshInstance" type="MeshInstance" parent="StaticBody2"]
+transform = Transform( 1, -4.47035e-08, 0, 4.47035e-08, 1, 0, 0, 0, 1, -0.0486088, -0.10364, 0.0472879 )
 mesh = SubResource( 9 )
 skeleton = NodePath("../CollisionShape")
 material/0 = SubResource( 7 )
