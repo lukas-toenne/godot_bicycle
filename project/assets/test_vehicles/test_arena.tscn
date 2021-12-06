@@ -1,6 +1,5 @@
-[gd_scene load_steps=16 format=2]
+[gd_scene load_steps=15 format=2]
 
-[ext_resource path="res://addons/debug_event_recorder/FlyCamera.gd" type="Script" id=1]
 [ext_resource path="res://checker1.png" type="Texture" id=2]
 [ext_resource path="res://assets/test_vehicles/test_car.tscn" type="PackedScene" id=3]
 [ext_resource path="res://addons/bicycle/PlayerController.gd" type="Script" id=4]
@@ -78,13 +77,7 @@ environment = SubResource( 10 )
 
 [node name="PlayerController" type="Node" parent="."]
 script = ExtResource( 4 )
-
-[node name="FlyCamera" type="Camera" parent="."]
-transform = Transform( 0.636509, -0.0168788, 0.771084, 0, 0.999761, 0.0218844, -0.771269, -0.0139296, 0.636357, 15.322, 4.21084, 9.49286 )
-script = ExtResource( 1 )
 start_paused = true
 
 [node name="Car" parent="." instance=ExtResource( 3 )]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 9.87194, 3.56745, 4.64761 )
-
-[node name="KinematicBody" type="KinematicBody" parent="."]

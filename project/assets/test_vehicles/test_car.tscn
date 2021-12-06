@@ -31,7 +31,6 @@ compression_damping = 4.0
 relaxation_damping = 5.0
 
 [node name="RearLeftWheel" type="Spatial" parent="."]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.751125, -0.109585, -1.00958 )
 script = ExtResource( 2 )
 use_as_traction = true
 stiffness = 200.0
@@ -45,10 +44,6 @@ use_as_traction = true
 stiffness = 200.0
 compression_damping = 4.0
 relaxation_damping = 5.0
-
-[node name="SpringArm" type="SpringArm" parent="."]
-transform = Transform( -1, 0, -8.74228e-08, -3.71317e-08, 0.905317, 0.424737, 7.91453e-08, 0.424737, -0.905317, 0, 0, 0 )
-spring_length = 10.0
 
 [node name="Beetle" parent="." instance=ExtResource( 3 )]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.483532, 0.384301 )

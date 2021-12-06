@@ -21,6 +21,7 @@ var _move_up = false
 var _move_down = false
 var _single_step = false
 
+
 func _ready():
 	# Don't pause camera flying
 	pause_mode = Node.PAUSE_MODE_PROCESS
