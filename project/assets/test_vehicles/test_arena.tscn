@@ -86,3 +86,5 @@ start_paused = true
 
 [node name="Car" parent="." instance=ExtResource( 3 )]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 9.87194, 3.56745, 4.64761 )
+
+[node name="KinematicBody" type="KinematicBody" parent="."]
