@@ -3,6 +3,8 @@ class_name Bicycle
 
 signal wheels_changed
 
+export(bool) var pause_on_first_contact = true
+
 export(float) var SIDE_FRICTION = 0.2
 
 # Torque applied to traction wheels from engine [Nm]
@@ -80,6 +82,7 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 		#space_state.cast_motion()
 		var source = info.hard_point - info.wheel_direction * wheel.radius
 		var target = info.hard_point + info.wheel_direction * (wheel.radius + wheel.rest_length)
+		DebugEventRecorder.record_vector(wheel, "raycast", source, target - source)
 		var exclude = [self]
 		var result = space_state.intersect_ray(source, target, exclude, collision_mask)
 
@@ -94,6 +97,10 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 			info.suspension_relative_velocity = 0.0
 			info.clipped_inv_contact_dot_suspension = 1.0
 		else:
+			if pause_on_first_contact:
+				pause_on_first_contact = false
+				get_tree().paused = true
+			
 			info.is_in_contact = true
 			info.ground_object = result["collider"] as PhysicsBody
 			info.contact_point = result["position"]
@@ -105,6 +112,7 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 			
 			# Velocity of the chassis relative to the contact point.
 			var chassis_vel_at_contact = state.linear_velocity + state.angular_velocity.cross(info.contact_point - state.transform.origin)
+			# XXX RigidBody still has a mode that can make it static or kinematic, have to check and handle accordingly!
 			if info.ground_object is RigidBody:
 				# Note: DO NOT access the ground object's state from the physics server here,
 				# as that will invalidate all future impulse addition!
@@ -136,8 +144,8 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 #		DebugEventRecorder.record_vector(wheel, "contact_velocity", info.contact_point, info.relative_contact_velocity)
 #		DebugEventRecorder.record_vector(wheel, "contact_velocity", info.contact_point, info.contact_normal * info.suspension_relative_velocity)
 
-#		DebugEventRecorder.record_spring(wheel, "suspension", info.hard_point, info.wheel_direction, wheel.rest_length, info.suspension_length)
-#		if info.is_in_contact:
+		if info.is_in_contact:
+			DebugEventRecorder.record_spring(wheel, "suspension", info.hard_point, info.wheel_direction, wheel.rest_length, info.suspension_length)
 #			print("Wheel {wheel} in contact: ground={ground}, point={point}, normal={normal}, suspension={suslen}, rel.vel.={relvel}, proj.suspension={invproj}".format({
 #				"wheel":wheel,
 #				"ground":info.ground_object,
@@ -147,7 +155,8 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 #				"relvel":info.suspension_relative_velocity,
 #				"invproj":info.clipped_inv_contact_dot_suspension,
 #				}))
-#		else:
+		else:
+			DebugEventRecorder.clear_event(wheel, "suspension")
 #			print("Wheel {wheel} free [ground={ground}, point={point}, normal={normal}, suspension={suslen}, rel.vel.={relvel}, proj.suspension={invproj}]".format({
 #				"wheel":wheel,
 #				"ground":info.ground_object,
@@ -279,22 +288,29 @@ func _solve_wheel_constraints(state: PhysicsDirectBodyState):
 	total_lambda.resize(wheel_array.size())
 	for k in wheel_array.size():
 		total_lambda[k] = 0.0
-	for iteration in 3:
+	for iteration in 1:
 #		print("  iteration ", iteration)
 		for k in wheel_array.size():
+#			if k != 0 and k != 3:
+			if k != 3:
+				continue
 			var wheel = wheel_array[k]
-#			print("  wheel ", wheel)
 			total_lambda[k] = _solve_single_wheel_constraint(state, wheel, total_lambda[k])
+#			print("  wheel ", wheel, " total lambda", total_lambda[k])
+
+			DebugEventRecorder.record_vector(self, "impulse"+str(wheel), state.transform.origin, state.angular_velocity)
 
 
 func _solve_single_wheel_constraint(state: PhysicsDirectBodyState, wheel: BicycleWheel, total_lambda: float):
-	var contact_bias = .5
+	var contact_bias = 1.0
 
 	# Variables to solve for:
 	#   Q = [Q_chassis, Q_ground]
 	#     = [Vc, Wc,    Vg, Wg]
 	var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
 	if !raycast.is_in_contact:
+		DebugEventRecorder.clear_event(wheel, "impulse")
+		DebugEventRecorder.clear_event(wheel, "torque")
 		return total_lambda
 
 	var normal := raycast.contact_normal
@@ -312,6 +328,10 @@ func _solve_single_wheel_constraint(state: PhysicsDirectBodyState, wheel: Bicycl
 	var inv_I_chassis = state.principal_inertia_axes * state.principal_inertia_axes.transposed().scaled(state.inverse_inertia)
 	var inv_m_ground = raycast.inv_ground_mass
 	var inv_I_ground = raycast.inv_ground_inertia
+	var M_eff_vel_ch = jac_vel_chassis.dot(inv_m_chassis * jac_vel_chassis)
+	var M_eff_rot_ch = jac_rot_chassis.dot(inv_I_chassis * jac_rot_chassis)
+	var M_eff_vel_gr = jac_vel_ground.dot(inv_m_ground * jac_vel_ground)
+	var M_eff_rot_gr = jac_rot_ground.dot(inv_I_ground * jac_rot_ground)
 	var M_eff = 1.0 / (jac_vel_chassis.dot(inv_m_chassis * jac_vel_chassis) 
 					 + jac_rot_chassis.dot(inv_I_chassis * jac_rot_chassis)
 					 + jac_vel_ground.dot(inv_m_ground * jac_vel_ground)
@@ -338,9 +358,15 @@ func _solve_single_wheel_constraint(state: PhysicsDirectBodyState, wheel: Bicycl
 	var impulse_ground = jac_vel_ground * lambda
 	var torque_ground = jac_rot_ground * lambda
 
+#	var curvel = state.linear_velocity
 	state.apply_central_impulse(impulse_chassis)
+#	print(wheel, curvel, " + ", inv_m_chassis * impulse_chassis, " = ", state.linear_velocity)
+#	var currot = state.angular_velocity
 	state.apply_torque_impulse(torque_chassis)
-	DebugEventRecorder.record_vector(wheel, "impulse", raycast.contact_point, impulse_chassis)
+#	print(wheel, currot, " + ", inv_I_chassis * torque_chassis, " = ", state.angular_velocity)
+	var debug_origin = lerp(state.transform.origin, raycast.contact_point, 0.2)
+	DebugEventRecorder.record_vector(wheel, "impulse", debug_origin, jac_vel_chassis * total_lambda)
+	DebugEventRecorder.record_vector(wheel, "torque", debug_origin, jac_rot_chassis * total_lambda)
 	# TODO can we apply impulse to the ground object?
 	
 	return total_lambda

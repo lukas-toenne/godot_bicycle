@@ -28,6 +28,8 @@ func _ready():
 	camera_arm.spring_length = camdist_default
 	camera_arm.transform.basis = Basis(Vector3(deg2rad(-30), deg2rad(180), 0))
 	camera_arm.add_child(camera)
+	# TODO: Disable collision for now, should only really exclude the vehicle
+	camera_arm.collision_mask = 0
 
 	camera.make_current()
 

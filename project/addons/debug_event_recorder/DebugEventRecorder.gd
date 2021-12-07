@@ -57,6 +57,19 @@ func _get_or_create_event(node: Node, key, on_create: FuncRef):
 	return item
 
 
+func clear_event(node: Node, key):
+	var node_items = _events.get(node, null)
+	if node_items != null:
+		var item = node_items.get(key, null)
+		if item != null:
+			for meshinst in item:
+				remove_child(meshinst)
+				meshinst.queue_free()
+			node_items.erase(key)
+		if node_items.empty():
+			_events.erase(node)
+
+
 func _make_vector():
 	var shaft = MeshInstance.new()
 	shaft.mesh = _vector_shaft

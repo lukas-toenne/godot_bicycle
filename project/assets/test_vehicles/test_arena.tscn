@@ -51,24 +51,25 @@ skeleton = NodePath("../CollisionShape")
 material/0 = SubResource( 7 )
 
 [node name="StaticBody2" type="StaticBody" parent="."]
-transform = Transform( 0.996317, -0.0857473, 0, 0.0857473, 0.996317, 0, 0, 0, 1, 9.34247, -0.230942, 4.88153 )
+transform = Transform( 0.996317, -0.0857473, 0, 0.0857473, 0.996317, 0, 0, 0, 1, 23.6623, -0.230942, 4.88153 )
 
 [node name="CollisionShape" type="CollisionShape" parent="StaticBody2"]
 shape = SubResource( 8 )
 
 [node name="MeshInstance" type="MeshInstance" parent="StaticBody2"]
-transform = Transform( 1, -4.47035e-08, 0, 4.47035e-08, 1, 0, 0, 0, 1, -0.0486088, -0.10364, 0.0472879 )
+transform = Transform( 1, -7.45058e-08, 0, 7.45058e-08, 1, 0, 0, 0, 1, 0.406872, -0.142842, 0.0472879 )
 mesh = SubResource( 9 )
 skeleton = NodePath("../CollisionShape")
 material/0 = SubResource( 7 )
 
 [node name="RigidBody" type="RigidBody" parent="."]
-transform = Transform( 0.984328, -0.176346, 0, 0.176346, 0.984328, 0, 0, 0, 1, 10.5686, 1.6471, 5.7094 )
+transform = Transform( 0.984328, -0.176346, 0, 0.176346, 0.984328, 0, 0, 0, 1, 17.7395, 2.93179, 5.7094 )
 
 [node name="CollisionShape" type="CollisionShape" parent="RigidBody"]
 shape = SubResource( 11 )
 
 [node name="MeshInstance" type="MeshInstance" parent="RigidBody"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 )
 mesh = SubResource( 12 )
 material/0 = SubResource( 13 )
 
@@ -80,4 +81,4 @@ script = ExtResource( 4 )
 start_paused = true
 
 [node name="Car" parent="." instance=ExtResource( 3 )]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 9.87194, 3.56745, 4.64761 )
+transform = Transform( -0.674753, 0, 0.738043, 0, 1, 0, -0.738043, 0, -0.674753, 9.87194, 3.56745, 4.64761 )
