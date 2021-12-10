@@ -9,16 +9,7 @@ class RaycastInfo:
 	var wheel_axle: Vector3
 	var contact_normal: Vector3
 	var contact_point: Vector3
-	var relative_contact_velocity: Vector3
 	
-	var inv_ground_mass: float
-	var inv_ground_inertia: Basis
-	var ground_linear_velocity: Vector3
-	var ground_angular_velocity: Vector3
-	
-	var suspension_relative_velocity: float
-	var clipped_inv_contact_dot_suspension: float
-
 	var suspension_length: float
 	var is_in_contact: bool
 	var ground_object: CollisionObject

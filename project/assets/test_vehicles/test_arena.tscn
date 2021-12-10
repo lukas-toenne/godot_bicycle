@@ -69,7 +69,6 @@ transform = Transform( 0.984328, -0.176346, 0, 0.176346, 0.984328, 0, 0, 0, 1, 1
 shape = SubResource( 11 )
 
 [node name="MeshInstance" type="MeshInstance" parent="RigidBody"]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 )
 mesh = SubResource( 12 )
 material/0 = SubResource( 13 )
 

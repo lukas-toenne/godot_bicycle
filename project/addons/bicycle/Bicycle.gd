@@ -14,6 +14,10 @@ export(float) var wheel_brake = 0.0
 export(float) var steering_angle = 0.0
 
 var controller setget _set_controller
+func _set_controller(value):
+	controller = value
+	_set_ragdoll(controller == null)
+
 var _wheels := Dictionary()
 
 var ragdoll: bool setget _set_ragdoll
@@ -27,9 +31,55 @@ func _set_ragdoll(value):
 		set_physics_process(true)
 
 
-func _set_controller(value):
-	controller = value
-	_set_ragdoll(controller == null)
+class Constraint:
+	var bodyA: RID
+	var bodyB: RID
+	
+	var solA: BodySolution
+	var solB: BodySolution
+
+	# Jacobian elements for a contact constraint:
+	# Velocity elements are the contact surface normal,
+	# Rotation elements are the axes perpendicular to the center-of-mass direction.
+	# Adding impulse in these directions can satisfy the
+	# constraint without adding energy (cf. Lagrange multipliers).
+	# For a derivation see e.g.
+	# Daniel Chappuis, "Constraints Derivation for Rigid Body Simulation in 3D"
+	# https://danielchappuis.ch/download/ConstraintsDerivationRigidBody3D.pdf
+	var jac_velA: Vector3
+	var jac_rotA: Vector3
+	var jac_velB: Vector3
+	var jac_rotB: Vector3
+
+	# Combination of velocity and position error that needs to be corrected
+	var impulse_error: float
+
+	var linear_componentA: Vector3
+	var angular_componentA: Vector3
+	var linear_componentB: Vector3
+	var angular_componentB: Vector3
+
+	# Effective mass
+	# Note: Bullet calls the effective mass "impulse denominator" (computeImpulseDenominator, m_jacDiagABInv)
+	#       It also includes a "constraint force mixing" (cfm) term.
+	var M_eff: float
+	var inv_M_eff: float
+
+	# Total applied impulse, used for clamping.
+	var applied_impulse: float
+
+	var delta_velA: Vector3
+	var delta_rotA: Vector3
+	var delta_velB: Vector3
+	var delta_rotB: Vector3
+
+
+class BodySolution:
+	var delta_vel: Vector3 = Vector3(0, 0, 0)
+	var delta_rot: Vector3 = Vector3(0, 0, 0)
+
+
+var body_solutions := Dictionary()
 
 
 func add_wheel(wheel: BicycleWheel):
@@ -55,13 +105,8 @@ func _physics_process(delta):
 
 func _integrate_forces(state):
 	_ray_cast_wheels(state)
-#	_apply_suspension(state)
-
 	_compute_wheel_torque(state)
-	
 	_solve_wheel_constraints(state)
-
-#	_apply_friction(state)
 	_update_wheel_rotation(state)
 
 
@@ -92,10 +137,6 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 			info.contact_point = target
 			info.contact_normal = -info.wheel_direction
 			info.suspension_length = wheel.rest_length
-
-			info.relative_contact_velocity = Vector3(0, 0, 0)
-			info.suspension_relative_velocity = 0.0
-			info.clipped_inv_contact_dot_suspension = 1.0
 		else:
 			if pause_on_first_contact:
 				pause_on_first_contact = false
@@ -109,37 +150,6 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 			var distance = source.distance_to(info.contact_point)
 #			var param = distance / (2.0 * wheel.radius + wheel.rest_length)
 			info.suspension_length = clamp(distance - 2.0 * wheel.radius, wheel.rest_length - wheel.travel, wheel.rest_length + wheel.travel)
-			
-			# Velocity of the chassis relative to the contact point.
-			var chassis_vel_at_contact = state.linear_velocity + state.angular_velocity.cross(info.contact_point - state.transform.origin)
-			# XXX RigidBody still has a mode that can make it static or kinematic, have to check and handle accordingly!
-			if info.ground_object is RigidBody:
-				# Note: DO NOT access the ground object's state from the physics server here,
-				# as that will invalidate all future impulse addition!
-				info.inv_ground_mass = 1.0 / info.ground_object.mass if info.ground_object.mass > 0.0 else 0.0
-				info.inv_ground_inertia = info.ground_object.get_inverse_inertia_tensor()
-				info.ground_linear_velocity = info.ground_object.linear_velocity
-				info.ground_angular_velocity = info.ground_object.angular_velocity
-				var ground_vel_at_contact = info.ground_object.linear_velocity + info.ground_object.angular_velocity.cross(info.contact_point - info.ground_object.transform.origin)
-				info.relative_contact_velocity = chassis_vel_at_contact - ground_vel_at_contact
-			else:
-				info.inv_ground_mass = 0.0
-				info.inv_ground_inertia = Basis(Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0))
-				info.ground_linear_velocity = Vector3(0, 0, 0)
-				info.ground_angular_velocity = Vector3(0, 0, 0)
-				info.relative_contact_velocity = chassis_vel_at_contact
-
-			# Wheel direction projected on contact normal (cosine of contact angle with the ground), must be -1..0 for valid contact.
-			var proj_wheel_dir = info.contact_normal.dot(info.wheel_direction)
-			var contact_threshold = -1.0e-3
-			if proj_wheel_dir < contact_threshold:
-				var proj_vel = info.contact_normal.dot(chassis_vel_at_contact)
-				var inv = -1.0 / proj_wheel_dir
-				info.suspension_relative_velocity = proj_vel * inv
-				info.clipped_inv_contact_dot_suspension = inv
-			else:
-				info.suspension_relative_velocity = 0.0
-				info.clipped_inv_contact_dot_suspension = -1.0 / contact_threshold
 
 #		DebugEventRecorder.record_vector(wheel, "contact_velocity", info.contact_point, info.relative_contact_velocity)
 #		DebugEventRecorder.record_vector(wheel, "contact_velocity", info.contact_point, info.contact_normal * info.suspension_relative_velocity)
@@ -168,30 +178,30 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 #				}))
 
 
-func _apply_suspension(state: PhysicsDirectBodyState):
-	var chassis_mass := mass
-	
-	for wheel in _wheels:
-		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
-		
-		var suspension_force := 0.0
-		if raycast.is_in_contact:
-			# Dampened spring forces from suspension
-			var spring_extension = wheel.rest_length - raycast.suspension_length
-			var stiffness = wheel.stiffness * spring_extension * raycast.clipped_inv_contact_dot_suspension
-			var damping = -raycast.suspension_relative_velocity
-			if damping > 0.0:
-				damping *= wheel.compression_damping
-			else:
-				damping *= wheel.relaxation_damping
-
-			# Negative force would mean the wheel sticks to the ground when lifted up.
-			suspension_force = clamp((stiffness + damping) * chassis_mass, 0.0, wheel.max_force)
-
-			var impulse = raycast.contact_normal * suspension_force * state.step;
-			var relative_position = raycast.contact_point - state.transform.origin;
-			state.apply_impulse(relative_position, impulse)
-			DebugEventRecorder.record_vector(wheel, "impulse", raycast.contact_point, impulse)
+#func _apply_suspension(state: PhysicsDirectBodyState):
+#	var chassis_mass := mass
+#
+#	for wheel in _wheels:
+#		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+#
+#		var suspension_force := 0.0
+#		if raycast.is_in_contact:
+#			# Dampened spring forces from suspension
+#			var spring_extension = wheel.rest_length - raycast.suspension_length
+#			var stiffness = wheel.stiffness * spring_extension * raycast.clipped_inv_contact_dot_suspension
+#			var damping = -raycast.suspension_relative_velocity
+#			if damping > 0.0:
+#				damping *= wheel.compression_damping
+#			else:
+#				damping *= wheel.relaxation_damping
+#
+#			# Negative force would mean the wheel sticks to the ground when lifted up.
+#			suspension_force = clamp((stiffness + damping) * chassis_mass, 0.0, wheel.max_force)
+#
+#			var impulse = raycast.contact_normal * suspension_force * state.step;
+#			var relative_position = raycast.contact_point - state.transform.origin;
+#			state.apply_impulse(relative_position, impulse)
+#			DebugEventRecorder.record_vector(wheel, "impulse", raycast.contact_point, impulse)
 
 
 # This function is implemented by subclasses
@@ -199,34 +209,34 @@ func _compute_wheel_torque(state):
 	wheel_torque = 0.0
 
 
-func _apply_friction(state: PhysicsDirectBodyState):
-	var inv_chassis_mass := 1.0 / mass if mass > 0.0 else 0.0
-
-	for wheel in _wheels:
-		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
-		
-		if raycast.is_in_contact:
-			var normal := raycast.contact_normal
-			var forward := normal.cross(raycast.wheel_axle).normalized()
-			var axle := forward.cross(normal)
-			
-			var forward_impulse := 0.0
-			var side_impulse := 0.0
-			
-			var max_rolling_friction = max(wheel_brake, 0.0)
-			forward_impulse += _calc_rolling_friction(wheel, max_rolling_friction)
-			if wheel.torque != 0.0:
-				forward_impulse -= wheel.torque * wheel.radius * state.step
-			
-			var inv_effective_mass = inv_chassis_mass + raycast.inv_ground_mass
-			var effective_mass = 1.0/inv_effective_mass if inv_effective_mass > 0.0 else 0.0
-			side_impulse = -SIDE_FRICTION * effective_mass * raycast.relative_contact_velocity.dot(axle)
-			
-			var relative_position = raycast.contact_point - state.transform.origin;
-			if forward_impulse != 0.0:
-				state.apply_impulse(relative_position, forward_impulse * forward)
-			if side_impulse != 0.0:
-				state.apply_impulse(relative_position, side_impulse * axle)
+#func _apply_friction(state: PhysicsDirectBodyState):
+#	var inv_chassis_mass := 1.0 / mass if mass > 0.0 else 0.0
+#
+#	for wheel in _wheels:
+#		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+#
+#		if raycast.is_in_contact:
+#			var normal := raycast.contact_normal
+#			var forward := normal.cross(raycast.wheel_axle).normalized()
+#			var axle := forward.cross(normal)
+#
+#			var forward_impulse := 0.0
+#			var side_impulse := 0.0
+#
+#			var max_rolling_friction = max(wheel_brake, 0.0)
+#			forward_impulse += _calc_rolling_friction(wheel, max_rolling_friction)
+#			if wheel.torque != 0.0:
+#				forward_impulse -= wheel.torque * wheel.radius * state.step
+#
+#			var inv_effective_mass = inv_chassis_mass + raycast.inv_ground_mass
+#			var effective_mass = 1.0/inv_effective_mass if inv_effective_mass > 0.0 else 0.0
+#			side_impulse = -SIDE_FRICTION * effective_mass * raycast.relative_contact_velocity.dot(axle)
+#
+#			var relative_position = raycast.contact_point - state.transform.origin;
+#			if forward_impulse != 0.0:
+#				state.apply_impulse(relative_position, forward_impulse * forward)
+#			if side_impulse != 0.0:
+#				state.apply_impulse(relative_position, side_impulse * axle)
 
 
 # NOTE: Both Bullet and Godot code for this is very old and without comment.
@@ -260,116 +270,175 @@ func _apply_friction(state: PhysicsDirectBodyState):
 #      M_eff = (J * M^(-1) * J^T)^(-1)
 #      lambda = -M_eff * (J * V0 + b)
 
-func _calc_rolling_friction(wheel: BicycleWheel, max_impulse: float):
-	var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
-	var normal := raycast.contact_normal
-	var forward := normal.cross(raycast.wheel_axle).normalized()
-	
-	var forward_velocity = raycast.relative_contact_velocity.dot(forward)
-
-	# TODO
-	var impulse = forward_velocity * 0.0
-	return clamp(impulse, -max_impulse, max_impulse)
+#func _calc_rolling_friction(wheel: BicycleWheel, max_impulse: float):
+#	var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+#	var normal := raycast.contact_normal
+#	var forward := normal.cross(raycast.wheel_axle).normalized()
+#
+#	var forward_velocity = raycast.relative_contact_velocity.dot(forward)
+#
+#	# TODO
+#	var impulse = forward_velocity * 0.0
+#	return clamp(impulse, -max_impulse, max_impulse)
 
 
 # Solves bilateral constraint between the wheel and the ground object.
 # This takes into account the suspension spring between vehicle body and wheel,
 # as well as the friction between wheel and ground object.
 func _solve_wheel_constraints(state: PhysicsDirectBodyState):
-	# Inverse of the effective mass.
-	# Symmetric positive-definite matrix with a row/column for each constraint.
-	# Each constraint adds an inverse effective mass term,
-	# at the end the matrix is used to solve for the Laplace multipliers.
-#	var inv_M_eff
-	
-#	print("SOLVE ")
 	var wheel_array = _wheels.values()
-	var total_lambda = []
-	total_lambda.resize(wheel_array.size())
-	for k in wheel_array.size():
-		total_lambda[k] = 0.0
-	for iteration in 1:
-#		print("  iteration ", iteration)
-		for k in wheel_array.size():
-#			if k != 0 and k != 3:
-			if k != 3:
+	
+	body_solutions.clear()
+
+	var constraints = []
+	constraints.resize(wheel_array.size())
+	for k in constraints.size():
+		var wheel = wheel_array[k]
+		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+		if !raycast.is_in_contact:
+			continue
+		
+		var constraint := Constraint.new()
+		_init_constraint(constraint, state, wheel, raycast)
+		constraints[k] = constraint
+	
+	
+	print("SOLVE ")
+	for iteration in 100:
+		print("  iteration ", iteration)
+		for k in constraints.size():
+			if constraints[k] == null:
 				continue
-			var wheel = wheel_array[k]
-			total_lambda[k] = _solve_single_wheel_constraint(state, wheel, total_lambda[k])
+#			if k != 0 and k != 3:
+#			if k != 3:
+#				continue
+			var residual = _resolve_single_constraint(constraints[k])
+			print("wheel ", wheel_array[k], " residual=", residual)
 #			print("  wheel ", wheel, " total lambda", total_lambda[k])
 
-			DebugEventRecorder.record_vector(self, "impulse"+str(wheel), state.transform.origin, state.angular_velocity)
+#			DebugEventRecorder.record_vector(self, "impulse"+str(wheel), state.transform.origin, state.angular_velocity)
+
+	if body_solutions.has(get_rid()):
+		state.linear_velocity += body_solutions[get_rid()].delta_vel
+		state.angular_velocity += body_solutions[get_rid()].delta_rot
+		DebugEventRecorder.record_vector(self, "linear_impulse", state.transform.origin, body_solutions[get_rid()].delta_vel)
+		DebugEventRecorder.record_vector(self, "angular_impulse", state.transform.origin, body_solutions[get_rid()].delta_rot)
 
 
-func _solve_single_wheel_constraint(state: PhysicsDirectBodyState, wheel: BicycleWheel, total_lambda: float):
-	var contact_bias = 1.0
-
-	# Variables to solve for:
-	#   Q = [Q_chassis, Q_ground]
-	#     = [Vc, Wc,    Vg, Wg]
-	var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
-	if !raycast.is_in_contact:
-		DebugEventRecorder.clear_event(wheel, "impulse")
-		DebugEventRecorder.clear_event(wheel, "torque")
-		return total_lambda
-
+const cfm = 0.0
+func _init_constraint(constraint: Constraint, state: PhysicsDirectBodyState, wheel: BicycleWheel, raycast: BicycleWheel.RaycastInfo):
+	constraint.bodyA = get_rid()
+	constraint.bodyB = raycast.ground_object.get_rid()
+	
+	# Cached body solution that can be accessed by multiple constraints
+	constraint.solA = body_solutions.get(constraint.bodyA, null)
+	if constraint.solA == null:
+		constraint.solA = BodySolution.new()
+		body_solutions[constraint.bodyA] = constraint.solA
+	constraint.solB = body_solutions.get(constraint.bodyB, null)
+	if constraint.solB == null:
+		constraint.solB = BodySolution.new()
+		body_solutions[constraint.bodyB] = constraint.solB
+	
 	var normal := raycast.contact_normal
-	var offset_chassis = raycast.contact_point - state.transform.origin
-	var offset_ground = raycast.contact_point - raycast.ground_object.transform.origin
-
-	# Jacobian elements for a contact constraint
-	var jac_vel_chassis = -normal
-	var jac_rot_chassis = -offset_chassis.cross(normal)
-	var jac_vel_ground = normal
-	var jac_rot_ground = offset_ground.cross(normal)
-
-	# Effective mass
-	var inv_m_chassis = state.inverse_mass
-	var inv_I_chassis = state.principal_inertia_axes * state.principal_inertia_axes.transposed().scaled(state.inverse_inertia)
-	var inv_m_ground = raycast.inv_ground_mass
-	var inv_I_ground = raycast.inv_ground_inertia
-	var M_eff_vel_ch = jac_vel_chassis.dot(inv_m_chassis * jac_vel_chassis)
-	var M_eff_rot_ch = jac_rot_chassis.dot(inv_I_chassis * jac_rot_chassis)
-	var M_eff_vel_gr = jac_vel_ground.dot(inv_m_ground * jac_vel_ground)
-	var M_eff_rot_gr = jac_rot_ground.dot(inv_I_ground * jac_rot_ground)
-	var M_eff = 1.0 / (jac_vel_chassis.dot(inv_m_chassis * jac_vel_chassis) 
-					 + jac_rot_chassis.dot(inv_I_chassis * jac_rot_chassis)
-					 + jac_vel_ground.dot(inv_m_ground * jac_vel_ground)
-					 + jac_rot_ground.dot(inv_I_ground * jac_rot_ground))
-
-	# Lagrange multiplier
-	var vel_chassis = state.linear_velocity
-	var rot_chassis = state.angular_velocity
-	var vel_ground = raycast.ground_linear_velocity
-	var rot_ground = raycast.ground_angular_velocity
-	var lambda = -M_eff * (jac_vel_chassis.dot(vel_chassis)
-						 + jac_rot_chassis.dot(rot_chassis)
-						 + jac_vel_ground.dot(vel_ground)
-						 + jac_rot_ground.dot(rot_ground)
-						 + contact_bias)
-	var old_total_lambda = total_lambda
-	total_lambda = min(total_lambda + lambda, 0.0)
-	lambda = total_lambda - old_total_lambda
-#	print("    lambda=", lambda)
+	var offsetA = raycast.contact_point - state.transform.origin
+	var offsetB = raycast.contact_point - raycast.ground_object.transform.origin
+	constraint.jac_velA = -normal
+	constraint.jac_rotA = -offsetA.cross(normal)
+	constraint.jac_velB = normal
+	constraint.jac_rotB = offsetB.cross(normal)
 	
-	# Apply corrective impulse derived from Lagrance multiplier
-	var impulse_chassis = jac_vel_chassis * lambda
-	var torque_chassis = jac_rot_chassis * lambda
-	var impulse_ground = jac_vel_ground * lambda
-	var torque_ground = jac_rot_ground * lambda
+	var inv_mA = state.inverse_mass
+	var inv_IA = state.principal_inertia_axes * state.principal_inertia_axes.transposed().scaled(state.inverse_inertia)
+	# XXX RigidBody still has a mode that can make it static or kinematic, have to check and handle accordingly!
+	var inv_mB = 0.0
+	var inv_IB = Basis(Vector3(0, 0, 0), Vector3(0, 0, 0), Vector3(0, 0, 0))
+	if raycast.ground_object is RigidBody:
+		# Note: DO NOT access the ground object's state from the physics server here,
+		# as that will invalidate all future impulse addition!
+		inv_mB = 1.0 / raycast.ground_object.mass if raycast.ground_object.mass > 0.0 else 0.0
+		inv_IB = raycast.ground_object.get_inverse_inertia_tensor()
 
-#	var curvel = state.linear_velocity
-	state.apply_central_impulse(impulse_chassis)
-#	print(wheel, curvel, " + ", inv_m_chassis * impulse_chassis, " = ", state.linear_velocity)
-#	var currot = state.angular_velocity
-	state.apply_torque_impulse(torque_chassis)
-#	print(wheel, currot, " + ", inv_I_chassis * torque_chassis, " = ", state.angular_velocity)
-	var debug_origin = lerp(state.transform.origin, raycast.contact_point, 0.2)
-	DebugEventRecorder.record_vector(wheel, "impulse", debug_origin, jac_vel_chassis * total_lambda)
-	DebugEventRecorder.record_vector(wheel, "torque", debug_origin, jac_rot_chassis * total_lambda)
-	# TODO can we apply impulse to the ground object?
+	constraint.linear_componentA = -(inv_mA * constraint.jac_velA)
+	constraint.angular_componentA = -(inv_IA * constraint.jac_rotA)
+	constraint.linear_componentB = -(inv_mB * constraint.jac_velB)
+	constraint.angular_componentB = -(inv_IB * constraint.jac_rotB)
+
+	constraint.inv_M_eff = constraint.jac_velA.dot(inv_mA * constraint.jac_velA) \
+						 + constraint.jac_rotA.dot(inv_IA * constraint.jac_rotA) \
+						 + constraint.jac_velB.dot(inv_mB * constraint.jac_velB) \
+						 + constraint.jac_rotB.dot(inv_IB * constraint.jac_rotB)
+	constraint.M_eff = 1.0 / constraint.inv_M_eff if constraint.inv_M_eff > 0.0 else 0.0
 	
-	return total_lambda
+	# TODO Implement warm starting: Cache contact constraints and use the
+	# previous frame's impulse as a starting point so fewer iterations
+	# are needed to reach stability.
+	constraint.applied_impulse = 0.0
+	
+	var velA = PhysicsServer.body_get_state(constraint.bodyA, PhysicsServer.BODY_STATE_LINEAR_VELOCITY)
+	var rotA = PhysicsServer.body_get_state(constraint.bodyA, PhysicsServer.BODY_STATE_ANGULAR_VELOCITY)
+	var velB = PhysicsServer.body_get_state(constraint.bodyB, PhysicsServer.BODY_STATE_LINEAR_VELOCITY)
+	var rotB = PhysicsServer.body_get_state(constraint.bodyB, PhysicsServer.BODY_STATE_ANGULAR_VELOCITY)
+	var nvelA = constraint.jac_velA.dot(velA) + constraint.jac_rotA.dot(rotA)
+	var nvelB = constraint.jac_velB.dot(velB) + constraint.jac_rotB.dot(rotB)
+	var rel_vel = nvelB - nvelA
+	
+	# TODO
+	var restitution = 0.0
+	
+	# TODO
+	var position_error = 0.0
+	var velocity_error = restitution - rel_vel
+	constraint.impulse_error = (position_error + velocity_error) * constraint.M_eff
+
+
+func _resolve_single_constraint(constraint: Constraint):
+	var contact_bias = 0.05
+	
+	var delta_impulse = constraint.impulse_error - constraint.applied_impulse * cfm
+	var nvelA = constraint.jac_velA.dot(constraint.solA.delta_vel) + constraint.jac_rotA.dot(constraint.solA.delta_rot)
+	var nvelB = constraint.jac_velB.dot(constraint.solB.delta_vel) + constraint.jac_rotB.dot(constraint.solB.delta_rot)
+	delta_impulse += (nvelA - nvelB) * constraint.M_eff
+	
+	var total_impulse = delta_impulse + constraint.applied_impulse
+	# TODO could be something else for friction constraints
+	var lower_limit = 0.0
+	if total_impulse < lower_limit:
+		delta_impulse = lower_limit - constraint.applied_impulse
+		constraint.applied_impulse = lower_limit
+	else:
+		constraint.applied_impulse = total_impulse
+	
+	constraint.solA.delta_vel += constraint.linear_componentA * delta_impulse
+	constraint.solA.delta_rot += constraint.angular_componentA * delta_impulse
+	constraint.solB.delta_vel += constraint.linear_componentB * delta_impulse
+	constraint.solB.delta_rot += constraint.angular_componentB * delta_impulse
+	
+	return delta_impulse * constraint.inv_M_eff
+
+#static btScalar gResolveSingleConstraintRowLowerLimit_scalar_reference(btSolverBody& bodyA, btSolverBody& bodyB, const btSolverConstraint& c)
+#{
+#	btScalar deltaImpulse = c.m_rhs - btScalar(c.m_appliedImpulse) * c.m_cfm;
+#	const btScalar deltaVel1Dotn = c.m_contactNormal1.dot(bodyA.internalGetDeltaLinearVelocity()) + c.m_relpos1CrossNormal.dot(bodyA.internalGetDeltaAngularVelocity());
+#	const btScalar deltaVel2Dotn = c.m_contactNormal2.dot(bodyB.internalGetDeltaLinearVelocity()) + c.m_relpos2CrossNormal.dot(bodyB.internalGetDeltaAngularVelocity());
+#
+#	deltaImpulse -= deltaVel1Dotn * c.m_jacDiagABInv;
+#	deltaImpulse -= deltaVel2Dotn * c.m_jacDiagABInv;
+#	const btScalar sum = btScalar(c.m_appliedImpulse) + deltaImpulse;
+#	if (sum < c.m_lowerLimit)
+#	{
+#		deltaImpulse = c.m_lowerLimit - c.m_appliedImpulse;
+#		c.m_appliedImpulse = c.m_lowerLimit;
+#	}
+#	else
+#	{
+#		c.m_appliedImpulse = sum;
+#	}
+#	bodyA.internalApplyImpulse(c.m_contactNormal1 * bodyA.internalGetInvMass(), c.m_angularComponentA, deltaImpulse);
+#	bodyB.internalApplyImpulse(c.m_contactNormal2 * bodyB.internalGetInvMass(), c.m_angularComponentB, deltaImpulse);
+#
+#	return deltaImpulse * (1. / c.m_jacDiagABInv);
+#}
 
 
 func _update_wheel_rotation(state: PhysicsDirectBodyState):
