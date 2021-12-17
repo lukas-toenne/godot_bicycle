@@ -303,9 +303,9 @@ func _solve_wheel_constraints(state: PhysicsDirectBodyState):
 		constraints[k] = constraint
 	
 	
-	print("SOLVE ")
-	for iteration in 100:
-		print("  iteration ", iteration)
+#	print("SOLVE ")
+	for iteration in 10:
+#		print("  iteration ", iteration)
 		for k in constraints.size():
 			if constraints[k] == null:
 				continue
@@ -313,7 +313,7 @@ func _solve_wheel_constraints(state: PhysicsDirectBodyState):
 #			if k != 3:
 #				continue
 			var residual = _resolve_single_constraint(constraints[k])
-			print("wheel ", wheel_array[k], " residual=", residual)
+#			print("wheel ", wheel_array[k], " residual=", residual)
 #			print("  wheel ", wheel, " total lambda", total_lambda[k])
 
 #			DebugEventRecorder.record_vector(self, "impulse"+str(wheel), state.transform.origin, state.angular_velocity)

@@ -11,12 +11,10 @@ opts.Add(EnumVariable('target', "Compilation target", 'debug', ['d', 'debug', 'r
 opts.Add(EnumVariable('platform', "Compilation platform", '', ['', 'windows', 'x11', 'linux', 'osx']))
 opts.Add(EnumVariable('p', "Compilation target, alias for 'platform'", '', ['', 'windows', 'x11', 'linux', 'osx']))
 opts.Add(BoolVariable('use_llvm', "Use the LLVM / Clang compiler", 'no'))
-opts.Add(PathVariable('target_path', 'The path where the lib is installed.', 'project/gdnative/'))
-opts.Add(PathVariable('target_name', 'The library name.', 'libbicyclevehicle', PathVariable.PathAccept))
 
 # Local dependency paths, adapt them to your setup
-godot_headers_path = "godot-cpp/godot-headers/"
-cpp_bindings_path = "godot-cpp/"
+godot_headers_path = "#/godot-cpp/godot-headers/"
+cpp_bindings_path = "#/godot-cpp/"
 cpp_library = "libgodot-cpp"
 
 # only support 64 at this time..
@@ -39,7 +37,7 @@ if env['platform'] == '':
 
 # Check our platform specifics
 if env['platform'] == "osx":
-    env['target_path'] += 'osx/'
+    env['platform_path'] = 'osx/'
     cpp_library += '.osx'
     if env['target'] in ('debug', 'd'):
         env.Append(CCFLAGS = ['-g','-O2', '-arch', 'x86_64', '-std=c++17'])
@@ -49,7 +47,7 @@ if env['platform'] == "osx":
         env.Append(LINKFLAGS = ['-arch', 'x86_64'])
 
 elif env['platform'] in ('x11', 'linux'):
-    env['target_path'] += 'x11/'
+    env['platform_path'] = 'x11/'
     cpp_library += '.linux'
     if env['target'] in ('debug', 'd'):
         env.Append(CCFLAGS = ['-fPIC', '-g3','-Og', '-std=c++17'])
@@ -57,7 +55,7 @@ elif env['platform'] in ('x11', 'linux'):
         env.Append(CCFLAGS = ['-fPIC', '-g','-O3', '-std=c++17'])
 
 elif env['platform'] == "windows":
-    env['target_path'] += 'win64/'
+    env['platform_path'] = 'win64/'
     cpp_library += '.windows'
     # This makes sure to keep the session environment variables on windows,
     # that way you can run scons in a vs 2017 prompt and it will find all the required tools
@@ -81,13 +79,8 @@ env.Append(CPPPATH=['.', godot_headers_path, cpp_bindings_path + 'include/', cpp
 env.Append(LIBPATH=[cpp_bindings_path + 'bin/'])
 env.Append(LIBS=[cpp_library])
 
-# tweak this if you want to use different folders, or more folders, to store your source code in.
-env.Append(CPPPATH=['src/'])
-sources = Glob('src/*.cpp')
-
-library = env.SharedLibrary(target=env['target_path'] + env['target_name'] , source=sources)
-
-Default(library)
-
 # Generates help for the -h scons option.
 Help(opts.GenerateHelpText(env))
+
+env.SConscript('src/better_vehicle/SConscript', 'env')
+env.SConscript('src/debug_event_recorder/SConscript', 'env')
