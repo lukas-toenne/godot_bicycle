@@ -33,6 +33,8 @@ export(float) var max_force := 6000.0
 export(float) var compression_damping := 0.83
 export(float) var relaxation_damping := 0.88
 
+var constraint_rid := RID()
+
 
 #var _engine_force := 0.0
 #var _brake := 0.0

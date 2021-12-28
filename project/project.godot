@@ -57,7 +57,7 @@ _global_script_class_icons={
 [application]
 
 config/name="Fiets"
-run/main_scene="res://assets/test_vehicles/test_arena.tscn"
+run/main_scene="res://test_vehicles/ui/test_selector.tscn"
 config/icon="res://icon.png"
 
 [autoload]

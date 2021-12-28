@@ -1,0 +1,20 @@
+[remap]
+
+importer="wavefront_obj"
+type="Mesh"
+path="res://.import/gdlibrary.obj-6c3aae5a641ed076086320b696241137.mesh"
+
+[deps]
+
+files=[ "res://.import/gdlibrary.obj-6c3aae5a641ed076086320b696241137.mesh" ]
+
+source_file="res://addons/mobility/src/gdlibrary.obj"
+dest_files=[ "res://.import/gdlibrary.obj-6c3aae5a641ed076086320b696241137.mesh", "res://.import/gdlibrary.obj-6c3aae5a641ed076086320b696241137.mesh" ]
+
+[params]
+
+generate_tangents=true
+scale_mesh=Vector3( 1, 1, 1 )
+offset_mesh=Vector3( 0, 0, 0 )
+octahedral_compression=true
+optimize_mesh_flags=4286

@@ -11,3 +11,6 @@ data_*/
 # Ignore build files
 .sconsign.dblite
 .vs/
+
+# Python
+__pycache__/**

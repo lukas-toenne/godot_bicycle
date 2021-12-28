@@ -1,0 +1,25 @@
+#!python
+import os, subprocess
+import methods
+
+opts = Variables([], ARGUMENTS)
+
+# Gets the standard flags CC, CCX, etc.
+Import('env')
+env = env.Clone()
+
+# Define our options
+opts.Add(PathVariable('target_path', 'The path where the lib is installed.', '../bin/'))
+opts.Add(PathVariable('target_name', 'The library name.', 'libmobility', PathVariable.PathAccept))
+
+# Updates the environment with the option variables.
+opts.Update(env)
+
+# tweak this if you want to use different folders, or more folders, to store your source code in.
+env.Append(CPPPATH=['.'])
+sources = Glob('*.cpp') + Glob('*.cc')
+includes = Glob('*.h') + Glob('*.hpp') + Glob('*.hh')
+
+project = methods.make_project(env, 'Mobility', sources, includes)
+
+Return('project')

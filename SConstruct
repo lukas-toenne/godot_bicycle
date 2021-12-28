@@ -4,13 +4,15 @@ import os, subprocess
 opts = Variables([], ARGUMENTS)
 
 # Gets the standard flags CC, CCX, etc.
-env = DefaultEnvironment()
+env = Environment(tools=['default', 'msvc'])
 
 # Define our options
 opts.Add(EnumVariable('target', "Compilation target", 'debug', ['d', 'debug', 'r', 'release']))
 opts.Add(EnumVariable('platform', "Compilation platform", '', ['', 'windows', 'x11', 'linux', 'osx']))
 opts.Add(EnumVariable('p', "Compilation target, alias for 'platform'", '', ['', 'windows', 'x11', 'linux', 'osx']))
 opts.Add(BoolVariable('use_llvm', "Use the LLVM / Clang compiler", 'no'))
+opts.Add(BoolVariable('vsproj', "Create a Microsoft Visual Studio solution file", 'no'))
+
 
 # Local dependency paths, adapt them to your setup
 godot_headers_path = "#/godot-cpp/godot-headers/"
@@ -82,5 +84,13 @@ env.Append(LIBS=[cpp_library])
 # Generates help for the -h scons option.
 Help(opts.GenerateHelpText(env))
 
-env.SConscript('src/better_vehicle/SConscript', 'env')
-env.SConscript('src/debug_event_recorder/SConscript', 'env')
+libraries = [
+    env.SConscript('project/addons/mobility/src/SConscript', 'env'),
+    env.SConscript('project/addons/debug_event_recorder/src/SConscript', 'env'),
+]
+
+if env['vsproj']:
+    env.MSVSSolution(target = 'godot_bicycle.sln',
+                     slnguid = '{SLNGUID}',
+                     projects = [x for x in libraries],
+                     variant = env['target'])

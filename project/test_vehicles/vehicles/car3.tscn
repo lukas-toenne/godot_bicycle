@@ -1,0 +1,34 @@
+[gd_scene load_steps=5 format=2]
+
+[ext_resource path="res://addons/mobility/chassis.gdns" type="Script" id=1]
+[ext_resource path="res://addons/mobility/wheel.gdns" type="Script" id=2]
+[ext_resource path="res://test_vehicles/assets/Beetle.glb" type="PackedScene" id=3]
+
+[sub_resource type="BoxShape" id=1]
+extents = Vector3( 0.21, 0.048, 0.348 )
+
+[node name="Car" type="RigidBody"]
+script = ExtResource( 1 )
+
+[node name="CollisionShape" type="CollisionShape" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.106, 0.294 )
+shape = SubResource( 1 )
+
+[node name="FrontLeftWheel" type="Spatial" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.751125, -0.107988, 1.85774 )
+script = ExtResource( 2 )
+
+[node name="FrontRightWheel" type="Spatial" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75438, -0.107988, 1.85774 )
+script = ExtResource( 2 )
+
+[node name="RearLeftWheel" type="Spatial" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.754, -0.11, -1.01 )
+script = ExtResource( 2 )
+
+[node name="RearRightWheel" type="Spatial" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75438, -0.109585, -1.00958 )
+script = ExtResource( 2 )
+
+[node name="Beetle" parent="." instance=ExtResource( 3 )]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.483532, 0.384301 )

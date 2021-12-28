@@ -3,7 +3,7 @@ class_name Bicycle
 
 signal wheels_changed
 
-export(bool) var pause_on_first_contact = true
+export(bool) var pause_on_first_contact = false
 
 export(float) var SIDE_FRICTION = 0.2
 
@@ -90,12 +90,18 @@ func add_wheel(wheel: BicycleWheel):
 
 func remove_wheel(wheel: BicycleWheel):
 	assert(_wheels.has(wheel))
+	_remove_wheel_constraint(wheel)
 	_wheels.erase(wheel)
 	emit_signal("wheels_changed")
 
 
 func _ready():
 	_set_ragdoll(true)
+
+
+func _exit_tree():
+	for wheel in _wheels:
+		_remove_wheel_constraint(wheel)
 
 
 func _physics_process(delta):
@@ -105,9 +111,10 @@ func _physics_process(delta):
 
 func _integrate_forces(state):
 	_ray_cast_wheels(state)
+	_update_wheel_constraints(state)
 	_compute_wheel_torque(state)
-	_solve_wheel_constraints(state)
-	_update_wheel_rotation(state)
+#	_solve_wheel_constraints(state)
+#	_update_wheel_rotation(state)
 
 
 func _ray_cast_wheels(state: PhysicsDirectBodyState):
@@ -176,6 +183,65 @@ func _ray_cast_wheels(state: PhysicsDirectBodyState):
 #				"relvel":info.suspension_relative_velocity,
 #				"invproj":info.clipped_inv_contact_dot_suspension,
 #				}))
+
+
+func _update_wheel_constraints(state: PhysicsDirectBodyState):
+	for wheel in _wheels:
+		var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+
+		if raycast.is_in_contact:
+			if !wheel.constraint_rid:
+				_init_wheel_constraint(state, wheel)
+		else:
+			if wheel.constraint_rid:
+				PhysicsServer.free_rid(wheel.constraint_rid)
+				wheel.constraint_rid = RID()
+
+
+func _init_wheel_constraint(state: PhysicsDirectBodyState, wheel: BicycleWheel):
+	var raycast: BicycleWheel.RaycastInfo = wheel._raycast_info
+
+	var up = raycast.contact_normal
+	var forward = raycast.wheel_axle.cross(raycast.contact_normal).normalized()
+	var left = up.cross(forward)
+	var world_transform = Transform(left, up, forward, raycast.contact_point)
+
+	var ridA = get_rid()
+	var ridB = raycast.ground_object.get_rid()
+	var transformA = (state.transform.affine_inverse() * world_transform).orthonormalized()
+	var transformB = (raycast.ground_object.transform.affine_inverse() * world_transform).orthonormalized()
+#	var transformA = world_transform
+#	var transformB = world_transform
+	wheel.constraint_rid = PhysicsServer.joint_create_generic_6dof(ridA, transformA, ridB, transformB)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_LINEAR_LIMIT, true)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Y, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_LINEAR_LIMIT, true)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_LINEAR_LIMIT, true)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_ANGULAR_LIMIT, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Y, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_ANGULAR_LIMIT, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_ANGULAR_LIMIT, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_LINEAR_MOTOR, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Y, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_LINEAR_MOTOR, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_LINEAR_MOTOR, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_MOTOR, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Y, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_MOTOR, false)
+	PhysicsServer.generic_6dof_joint_set_flag(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_FLAG_ENABLE_MOTOR, false)
+
+	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_LINEAR_LOWER_LIMIT, -1.0e9)
+	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_LINEAR_LOWER_LIMIT, -1.0e9)
+	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_LINEAR_UPPER_LIMIT, 1.0e9)
+	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_LINEAR_UPPER_LIMIT, 1.0e9)
+
+#	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_Y, PhysicsServer.G6DOF_JOINT_LINEAR_RESTITUTION, 1.0)
+
+	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_X, PhysicsServer.G6DOF_JOINT_LINEAR_SPRING_DAMPING, 100.0)
+	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_Z, PhysicsServer.G6DOF_JOINT_LINEAR_DAMPING, 100.0)
+#	PhysicsServer.generic_6dof_joint_set_param(wheel.constraint_rid, Vector3.AXIS_Y, PhysicsServer.G6DOF_JOINT_LINEAR_DAMPING, 100.0)
+
+
+func _remove_wheel_constraint(wheel: BicycleWheel):
+	if wheel.constraint_rid:
+		PhysicsServer.free_rid(wheel.constraint_rid)
+		wheel.constraint_rid = RID()
 
 
 #func _apply_suspension(state: PhysicsDirectBodyState):
@@ -303,9 +369,12 @@ func _solve_wheel_constraints(state: PhysicsDirectBodyState):
 		constraints[k] = constraint
 	
 	
-#	print("SOLVE ")
-	for iteration in 10:
+#	print("SOLVE %d" % [constraints.size()])
+	var max_iterations = 50
+	var least_squares_residual_threshold = 0.001
+	for iteration in max_iterations:
 #		print("  iteration ", iteration)
+		var least_squares_residual = 0.0
 		for k in constraints.size():
 			if constraints[k] == null:
 				continue
@@ -313,10 +382,16 @@ func _solve_wheel_constraints(state: PhysicsDirectBodyState):
 #			if k != 3:
 #				continue
 			var residual = _resolve_single_constraint(constraints[k])
+			least_squares_residual = max(least_squares_residual, residual * residual)
 #			print("wheel ", wheel_array[k], " residual=", residual)
 #			print("  wheel ", wheel, " total lambda", total_lambda[k])
 
 #			DebugEventRecorder.record_vector(self, "impulse"+str(wheel), state.transform.origin, state.angular_velocity)
+		if least_squares_residual <= least_squares_residual_threshold:
+#			print("%d iterations, residual=%f" % [iteration + 1, least_squares_residual])
+			break
+#		if iteration == max_iterations + 1:
+#			print("MAX ITERATIONS REACHED")
 
 	if body_solutions.has(get_rid()):
 		state.linear_velocity += body_solutions[get_rid()].delta_vel
@@ -379,6 +454,12 @@ func _init_constraint(constraint: Constraint, state: PhysicsDirectBodyState, whe
 	var rotA = PhysicsServer.body_get_state(constraint.bodyA, PhysicsServer.BODY_STATE_ANGULAR_VELOCITY)
 	var velB = PhysicsServer.body_get_state(constraint.bodyB, PhysicsServer.BODY_STATE_LINEAR_VELOCITY)
 	var rotB = PhysicsServer.body_get_state(constraint.bodyB, PhysicsServer.BODY_STATE_ANGULAR_VELOCITY)
+
+	# TODO Godot has very convoluted override options for local gravity,
+	# this is just the basic version. We can read precomputed gravity from the body state for A,
+	# but no way to get corresponding gravity for B in case it's a rigid body too.
+	velA += state.total_gravity * inv_mA * state.step
+
 	var nvelA = constraint.jac_velA.dot(velA) + constraint.jac_rotA.dot(rotA)
 	var nvelB = constraint.jac_velB.dot(velB) + constraint.jac_rotB.dot(rotB)
 	var rel_vel = nvelB - nvelA
@@ -398,7 +479,8 @@ func _resolve_single_constraint(constraint: Constraint):
 	var delta_impulse = constraint.impulse_error - constraint.applied_impulse * cfm
 	var nvelA = constraint.jac_velA.dot(constraint.solA.delta_vel) + constraint.jac_rotA.dot(constraint.solA.delta_rot)
 	var nvelB = constraint.jac_velB.dot(constraint.solB.delta_vel) + constraint.jac_rotB.dot(constraint.solB.delta_rot)
-	delta_impulse += (nvelA - nvelB) * constraint.M_eff
+	var baumgarte = 0.0
+	delta_impulse += (nvelA - nvelB + baumgarte) * constraint.M_eff
 	
 	var total_impulse = delta_impulse + constraint.applied_impulse
 	# TODO could be something else for friction constraints
