@@ -1,0 +1,8 @@
+[configuration]
+
+entry_symbol = "mobility_library_init"
+
+[libraries]
+
+windows.64.debug = "bin/x64/Debug/mobility.dll"
+windows.64.release = "bin/x64/Release/mobility.dll"

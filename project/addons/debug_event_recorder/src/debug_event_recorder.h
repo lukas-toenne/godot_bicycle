@@ -1,25 +1,22 @@
 #pragma once
 
-#include <Godot.hpp>
-#include <Node.hpp>
+#include <godot_cpp/classes/node.hpp>
 
 namespace godot {
 
 class DebugEventRecorder : public Node {
-    GODOT_CLASS(DebugEventRecorder, Node)
+    GDCLASS(DebugEventRecorder, Node)
 
 private:
     float time_passed;
 
 public:
-    static void _register_methods();
+    static void _bind_methods();
 
     DebugEventRecorder();
     ~DebugEventRecorder();
 
-    void _init(); // our initializer called by Godot
-
-    void _process(float delta);
+    virtual void _process(double delta) override;
 };
 
 }

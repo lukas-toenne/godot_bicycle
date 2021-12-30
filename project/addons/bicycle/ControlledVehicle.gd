@@ -6,45 +6,41 @@ extends Bicycle
 #
 # With a couple of additions to simulate the clutch.
 
-export(float) var MAX_ENGINE_TORQUE = 700.0
-export(float) var MAX_ENGINE_RPM = 8000.0
-export(Curve) var ENGINE_TORQUE_CURVE = preload("./DefaultTorqueCurve.tres")
-export(Array) var GEAR_RATIOS = [ -2.5, 0.0, 2.69, 2.01, 1.59, 1.32, 1.13, 1.0 ] 
-export(float) var FINAL_DRIVE_RATIO = 3.38
+@export var MAX_ENGINE_TORQUE := 700.0
+@export var MAX_ENGINE_RPM := 8000.0
+@export var ENGINE_TORQUE_CURVE: Curve = preload("./DefaultTorqueCurve.tres")
+@export var GEAR_RATIOS: Array[float] = [ -2.5, 0.0, 2.69, 2.01, 1.59, 1.32, 1.13, 1.0 ] 
+@export var FINAL_DRIVE_RATIO := 3.38
 # Approximated moments of inertial as cylinders of mass M and radius R: I = (M * R^2) / 2
-export(float) var WHEEL_INERTIA = 100.0 * 0.4*0.4 / 2.0
-export(float) var ENGINE_INERTIA = 300.0 * 0.1*0.1 / 2.0
+@export var WHEEL_INERTIA := 100.0 * 0.4*0.4 / 2.0
+@export var ENGINE_INERTIA := 300.0 * 0.1*0.1 / 2.0
 
-export(float) var MAX_BRAKE_TORQUE = 50.0
+@export var MAX_BRAKE_TORQUE := 50.0
 
-export(float) var MAX_STEER_ANGLE = 30
-export(float) var SPEED_STEER_ANGLE = 10
-export(float) var MAX_STEER_SPEED = 120.0
-export(float) var MAX_STEER_INPUT = 90.0
-export(float) var STEER_SPEED = 1.0
+@export var MAX_STEER_ANGLE := 30
+@export var SPEED_STEER_ANGLE := 10
+@export var MAX_STEER_SPEED := 120.0
+@export var MAX_STEER_INPUT := 90.0
+@export var STEER_SPEED := 1.0
 
-var throttle: float = 0.0 setget _set_throttle
-var current_gear: int = 0 setget _set_current_gear
-var clutch: float = 1.0 setget _set_clutch
+var throttle: float = 0.0:
+	set(value):
+		throttle = clamp(value, 0.0, 1.0)
+
+var current_gear: int = 0:
+	set(value):
+		current_gear = clamp(value, 0, GEAR_RATIOS.size() - 1)
+
+var clutch: float = 1.0:
+	set(value):
+		clutch = clamp(value, 0.0, 1.0)
 
 var _engine_rpm := 0.0
 var _wheel_rpm := 0.0
 
 
-func _set_throttle(value):
-	throttle = clamp(value, 0.0, 1.0)
-
-
-func _set_current_gear(value):
-	current_gear = clamp(value, 0, GEAR_RATIOS.size() - 1)
-
-
-func _set_clutch(value):
-	clutch = clamp(value, 0.0, 1.0)
-
-
 func _init():
-	._init()
+	super._init()
 	
 	# Look for neutral gear (ratio 0.0), otherwise use first gear in the list.
 	current_gear = GEAR_RATIOS.find(0.0)

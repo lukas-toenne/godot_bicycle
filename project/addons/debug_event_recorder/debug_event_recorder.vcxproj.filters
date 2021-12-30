@@ -18,7 +18,7 @@
     <ClCompile Include="src\debug_event_recorder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\debug_event_recorder_gdlibrary.cpp">
+    <ClCompile Include="src\debug_event_recorder_library.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -2,24 +2,18 @@
 
 using namespace godot;
 
-void DebugEventRecorder::_register_methods() {
-    register_method("_process", &DebugEventRecorder::_process);
+void DebugEventRecorder::_bind_methods() {
 }
 
 DebugEventRecorder::DebugEventRecorder() {
+    time_passed = 0.0f;
 }
 
 DebugEventRecorder::~DebugEventRecorder() {
-    // add your cleanup here
 }
 
-void DebugEventRecorder::_init() {
-    // initialize any variables here
-    time_passed = 0.0;
-}
-
-void DebugEventRecorder::_process(float delta) {
-    time_passed += delta;
+void DebugEventRecorder::_process(double delta) {
+    time_passed += (float)delta;
 
     // Vector2 new_position = Vector2(10.0 + (10.0 * sin(time_passed * 2.0)), 10.0 + (10.0 * cos(time_passed * 1.5)));
 

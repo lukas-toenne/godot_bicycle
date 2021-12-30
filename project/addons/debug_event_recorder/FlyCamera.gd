@@ -1,17 +1,17 @@
-extends Camera
+extends Camera3D
 class_name FlyCamera
 
 const BallProbe = preload("res://addons/debug_event_recorder/BallProbe.tscn")
 
-export(bool) var start_paused = false
+@export var start_paused := false
 
-export(float) var rotation_speed = 1.0
-export(float) var yaw_factor = 0.005
-export(float) var pitch_factor = 0.005
-export(bool) var pitch_inverted = false
+@export var rotation_speed := 1.0
+@export var yaw_factor := 0.005
+@export var pitch_factor := 0.005
+@export var pitch_inverted := false
 
-export(float) var move_speed = 1.5
-export(Vector3) var move_factor = Vector3(1, 1, 1)
+@export var move_speed := 1.5
+@export var move_factor := Vector3(1, 1, 1)
 
 var _move_forward = false
 var _move_back = false
@@ -24,13 +24,13 @@ var _single_step = false
 
 func _ready():
 	# Don't pause camera flying
-	pause_mode = Node.PAUSE_MODE_PROCESS
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().paused = start_paused
 
 
 func _input(event):
 	if event is InputEventMouseButton:
-		if event.button_index == BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if event.pressed:
 				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			else:
@@ -46,10 +46,10 @@ func _input(event):
 			var current = transform.basis.get_euler()
 			current.x = clamp(current.x + delta_pitch, -.5 * PI, .5 * PI)
 			current.y = fmod(current.y + delta_yaw, 2 * PI)
-			transform.basis = Basis(current)
+			transform.basis = Basis.from_euler(current)
 	
 		if event is InputEventMouseButton:
-			if event.button_index == BUTTON_LEFT and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 				var ball = BallProbe.instance()
 				ball.transform = transform
 				ball.linear_velocity = -transform.basis.z * 10.0

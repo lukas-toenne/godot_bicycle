@@ -2,13 +2,28 @@ extends Node
 class_name DebugVector
 
 
-export(Vector3) var start setget _set_start
-export(Vector3) var direction setget _set_direction
-export(float) var thickness := 0.02 setget _set_thickness
-export(float) var tip_length := 0.04
+@export var start: Vector3:
+	set(value):
+		start = value
+		_update_placement()
 
-var _shaft: MeshInstance = null
-var _tip: MeshInstance = null
+@export var direction: Vector3:
+	set(value):
+		direction = value
+		_update_placement()
+
+@export var thickness := 0.02:
+	set(value):
+		thickness = value
+		_update_geometry()
+
+@export var tip_length := 0.04:
+	set(value):
+		tip_length = value
+		_update_geometry()
+
+var _shaft: MeshInstance3D = null
+var _tip: MeshInstance3D = null
 
 
 func _update_geometry():
@@ -22,45 +37,25 @@ func _update_geometry():
 		_tip.mesh.height = 1.0
 
 
-func _set_thickness(value):
-	thickness = value
-	_update_geometry()
-
-
-func _set_tip_length(value):
-	tip_length = value
-	_update_geometry()
-
-
 func _update_placement():
 	if is_inside_tree():
 		assert(_shaft)
 		assert(_tip)
 		
-		var height := max(direction.length() - tip_length, 0.0)
+		var height := maxf(direction.length() - tip_length, 0.0)
 		var y: Vector3 = direction.normalized()
 		var x := y.cross(Vector3(0, 1, 0)).normalized()
 		if x.length_squared() < 1.0e-6:
 			x = y.cross(Vector3(1, 0, 0)).normalized()
 		var z := x.cross(y)
-		_shaft.transform = Transform(x, y * height, z, start + y * height * 0.5)
-		_tip.transform = Transform(x, y * tip_length, z, start + y * height)
-
-
-func _set_start(value):
-	start = value
-	_update_placement()
-
-
-func _set_direction(value):
-	direction = value
-	_update_placement()
+		_shaft.transform = Transform3D(x, y * height, z, start + y * height * 0.5)
+		_tip.transform = Transform3D(x, y * tip_length, z, start + y * height)
 
 
 func _enter_tree():
-	_shaft = MeshInstance.new()
+	_shaft = MeshInstance3D.new()
 	_shaft.mesh = CylinderMesh.new()
-	_tip = MeshInstance.new()
+	_tip = MeshInstance3D.new()
 	_tip.mesh = CylinderMesh.new()
 	_update_geometry()
 	_update_placement()

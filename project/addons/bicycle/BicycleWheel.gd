@@ -1,4 +1,4 @@
-extends Spatial
+extends Node3D
 class_name BicycleWheel
 
 
@@ -12,26 +12,26 @@ class RaycastInfo:
 	
 	var suspension_length: float
 	var is_in_contact: bool
-	var ground_object: CollisionObject
+	var ground_object: CollisionObject3D
 
 
-export(float) var torque := 0.0
-export(float) var steering_angle := 0.0
+@export var torque := 0.0
+@export var steering_angle := 0.0
 
-export(bool) var use_as_traction := false
-export(bool) var use_as_steering := false
+@export var use_as_traction := false
+@export var use_as_steering := false
 
-export(float) var roll_influence := 0.1
-export(float) var radius := 0.5;
-export(float) var rest_length := 0.15
-export(float) var friction_slip := 10.5
+@export var roll_influence := 0.1
+@export var radius := 0.5;
+@export var rest_length := 0.15
+@export var friction_slip := 10.5
 
-export(float) var travel := 0.05
-export(float) var stiffness := 5.88
-export(float) var max_force := 6000.0
+@export var travel := 0.05
+@export var stiffness := 5.88
+@export var max_force := 6000.0
 
-export(float) var compression_damping := 0.83
-export(float) var relaxation_damping := 0.88
+@export var compression_damping := 0.83
+@export var relaxation_damping := 0.88
 
 var constraint_rid := RID()
 
@@ -56,7 +56,7 @@ var constraint_rid := RID()
 #var _relaxation_damping := 0.88
 
 # Rest transform of the wheel in parent space.
-var _rest_transform := Transform.IDENTITY
+var _rest_transform := Transform3D.IDENTITY
 
 # Raycast result of the last physics step
 var _raycast_info := RaycastInfo.new()

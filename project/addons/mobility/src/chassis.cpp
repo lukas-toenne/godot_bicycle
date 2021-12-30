@@ -2,17 +2,16 @@
 
 #include "wheel.h"
 
-#include "PhysicsDirectSpaceState.hpp"
-#include "World.hpp"
+#include <godot_cpp/classes/physics_direct_space_state3d.hpp>
+#include <godot_cpp/classes/physics_ray_query_parameters3d.hpp>
+#include <godot_cpp/classes/world3d.hpp>
+
+#include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
 
-const Chassis Chassis::m_cdo = Chassis();
-
-void Chassis::_register_methods() {
-	register_signal<Chassis>("wheels_changed");
-
-	register_method("_integrate_forces", &Chassis::_integrate_forces);
+void Chassis::_bind_methods() {
+	ADD_SIGNAL(MethodInfo("wheels_changed"));
 }
 
 Chassis::Chassis() {
@@ -21,14 +20,11 @@ Chassis::Chassis() {
 Chassis::~Chassis() {
 }
 
-void Chassis::_init() {
-}
-
-void Chassis::_integrate_forces(PhysicsDirectBodyState* state)
+void Chassis::_integrate_forces(PhysicsDirectBodyState3D* state)
 {
 }
 
-void Chassis::solve_constraints(PhysicsDirectBodyState* state)
+void Chassis::solve_constraints(PhysicsDirectBodyState3D* state)
 {
 	const float least_squares_residual_threshold = 0.001f;
 
@@ -106,42 +102,45 @@ void Chassis::remove_wheel(Wheel* wheel)
 	m_wheels = new_wheels;
 }
 
-void Chassis::ray_cast_wheel(PhysicsDirectBodyState* state, Chassis::WheelInfo& info)
+void Chassis::ray_cast_wheel(PhysicsDirectBodyState3D* state, Chassis::WheelInfo& info)
 {
-	PhysicsDirectSpaceState* space_state = get_world()->get_direct_space_state();
-	const Transform chassis_transform = state->get_transform();
+	PhysicsDirectSpaceState3D* space_state = get_world_3d()->get_direct_space_state();
+	const Transform3D chassis_transform = state->get_transform();
 
-	Transform wheel_transform = chassis_transform * info.rest_transform;
+	Transform3D wheel_transform = chassis_transform * info.rest_transform;
 
 	info.hard_point = wheel_transform.origin;
-	info.wheel_direction = -wheel_transform.basis.y.normalized();
-	info.wheel_axle = wheel_transform.basis.x.normalized();
+	info.wheel_direction = -wheel_transform.basis.get_column(1).normalized();
+	info.wheel_axle = wheel_transform.basis.get_column(0).normalized();
 
 	// TODO For accurate future collision detection use cast_motion :
 	// space_state.cast_motion()
-	Vector3 source = info.hard_point - info.wheel_direction * info.wheel->m_radius;
-	Vector3 target = info.hard_point + info.wheel_direction * (info.wheel->m_radius + info.wheel->m_suspension_rest_length);
+	PhysicsRayQueryParameters3D ray_params;
+	ray_params.set_from(info.hard_point - info.wheel_direction * info.wheel->m_radius);
+	ray_params.set_to(info.hard_point + info.wheel_direction * (info.wheel->m_radius + info.wheel->m_suspension_rest_length));
 	//DebugEventRecorder.record_vector(wheel, "raycast", source, target - source)
 	Array exclude;
 	exclude.push_back(this);
-	Dictionary result = space_state->intersect_ray(source, target, exclude, get_collision_mask());
+	ray_params.set_exclude(exclude);
+	ray_params.set_collision_mask(get_collision_mask());
+	Dictionary result = space_state->intersect_ray(Ref<PhysicsRayQueryParameters3D>(&ray_params));
 
-	if (result.empty())
+	if (result.is_empty())
 	{
 		info.is_in_contact = false;
 		info.ground_object = nullptr;
-		info.contact_point = target;
+		info.contact_point = ray_params.get_to();
 		info.contact_normal = -info.wheel_direction;
 		info.suspension_length = info.wheel->m_suspension_rest_length;
 	}
 	else
 	{
 		info.is_in_contact = true;
-		info.ground_object = result["collider"];
+		info.ground_object = cast_to<CollisionObject3D>((Object*)result["collider"]);
 		info.contact_point = result["position"];
 		info.contact_normal = result["normal"];
 
-		float distance = source.distance_to(info.contact_point);
+		float distance = ray_params.get_from().distance_to(info.contact_point);
 		// float param = distance / (2.0 * wheel.radius + wheel.rest_length);
 		//info.suspension_length = clamp(distance - 2.0 * info.wheel->m_radius, info.wheel->m_suspension_rest_length - info.wheel->m, wheel.rest_length + wheel.travel);
 

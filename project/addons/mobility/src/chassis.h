@@ -1,8 +1,7 @@
 #pragma once
 
-#include "Godot.hpp"
-#include "PhysicsDirectBodyState.hpp"
-#include "RigidBody.hpp"
+#include <godot_cpp/classes/physics_direct_body_state3d.hpp>
+#include <godot_cpp/classes/rigid_dynamic_body3d.hpp>
 
 #include <unordered_map>
 #include <vector>
@@ -13,7 +12,7 @@ struct std::hash<godot::RID>
 {
 	std::size_t operator()(godot::RID const& rid) const noexcept
 	{
-		return std::hash<int32_t>{}(rid.get_id());
+		return std::hash<int64_t>{}(rid.get_id());
 	}
 };
 
@@ -21,15 +20,15 @@ namespace godot {
 
 class Wheel;
 
-class Chassis : public RigidBody {
-	GODOT_CLASS(Chassis, RigidBody)
+class Chassis : public RigidDynamicBody3D {
+	GDCLASS(Chassis, RigidDynamicBody3D)
 
 public:
 	struct WheelInfo
 	{
 		Wheel* wheel;
 
-		Transform rest_transform;
+		Transform3D rest_transform;
 
 		// Contact vectors in world space
 		Vector3 hard_point;
@@ -40,7 +39,7 @@ public:
 
 		float suspension_length;
 		bool is_in_contact;
-		CollisionObject* ground_object;
+		CollisionObject3D* ground_object;
 	};
 
 	struct WheelConstraint
@@ -54,29 +53,25 @@ public:
 		Vector3 delta_rot = Vector3(0, 0, 0);
 	};
 
-	static void _register_methods();
+	static void _bind_methods();
 
 	Chassis();
 	~Chassis();
 
-	void _init(); // our initializer called by Godot
-
-	void _integrate_forces(PhysicsDirectBodyState* state);
+	virtual void _integrate_forces(PhysicsDirectBodyState3D* state) override;
 
 	void add_wheel(Wheel* wheel);
 	void remove_wheel(Wheel* wheel);
 
 protected:
-	void ray_cast_wheel(PhysicsDirectBodyState* state, WheelInfo& info);
-	void solve_constraints(PhysicsDirectBodyState* state);
+	void ray_cast_wheel(PhysicsDirectBodyState3D* state, WheelInfo& info);
+	void solve_constraints(PhysicsDirectBodyState3D* state);
 	float resolve_single_constraint(WheelConstraint& constraint);
 
 private:
 	std::vector<WheelInfo> m_wheels;
 	std::vector<WheelConstraint> m_constraints;
 	std::unordered_map<RID, BodySolution> m_body_solutions;
-
-	static const Chassis m_cdo;
 };
 
 }

@@ -1,32 +1,32 @@
 extends VehicleController
 class_name PlayerController
 
-export(bool) var start_paused = false
+@export var start_paused := false
 
-export(float) var rotation_speed = 1.0
-export(float) var yaw_factor = 0.005
-export(float) var pitch_factor = 0.005
-export(bool) var pitch_inverted = false
+@export var rotation_speed := 1.0
+@export var yaw_factor := 0.005
+@export var pitch_factor := 0.005
+@export var pitch_inverted := false
 
-export(float) var camdist_default = 10.0
-export(float) var camdist_min = 2.0
-export(float) var camdist_max = 50.0
-export(float, 0.0, 1.0) var camdist_zoom_speed = 0.333
+@export var camdist_default := 10.0
+@export var camdist_min := 2.0
+@export var camdist_max := 50.0
+@export_range(0.0, 1.0) var camdist_zoom_speed := 0.333
 
 var _do_single_step = false
-var camera: Camera = Camera.new()
-var camera_arm: SpringArm = SpringArm.new()
+var camera: Camera3D = Camera3D.new()
+var camera_arm: SpringArm3D = SpringArm3D.new()
 
 func _ready():
 	# Don't pause camera flying
-	pause_mode = Node.PAUSE_MODE_PROCESS
-	camera.pause_mode = Node.PAUSE_MODE_PROCESS
-	camera_arm.pause_mode = Node.PAUSE_MODE_PROCESS
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	camera.process_mode = Node.PROCESS_MODE_ALWAYS
+	camera_arm.process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().paused = start_paused
 
 	camera.transform.origin = Vector3(0, 0, camdist_default)
 	camera_arm.spring_length = camdist_default
-	camera_arm.transform.basis = Basis(Vector3(deg2rad(-30), deg2rad(180), 0))
+	camera_arm.transform.basis = Basis.from_euler(Vector3(deg2rad(-30), deg2rad(180), 0))
 	camera_arm.add_child(camera)
 	# TODO: Disable collision for now, should only really exclude the vehicle
 	camera_arm.collision_mask = 0
@@ -43,16 +43,16 @@ func _exit_tree():
 
 
 func enter_vehicle(value):
-	.enter_vehicle(value)
+	super.enter_vehicle(value)
 
 
 func exit_vehicle():
-	.exit_vehicle()
+	super.exit_vehicle()
 
 
 func _input(event):
 	# Enable view control with RMB
-	if event is InputEventMouseButton and event.button_index == BUTTON_RIGHT:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		else:
@@ -69,13 +69,13 @@ func _input(event):
 			var current = camera_arm.transform.basis.get_euler()
 			current.x = clamp(current.x + delta_pitch, -.5 * PI, .5 * PI)
 			current.y = fmod(current.y + delta_yaw, 2 * PI)
-			camera_arm.transform.basis = Basis(current)
+			camera_arm.transform.basis = Basis.from_euler(current)
 
 	# Camera zoom
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == BUTTON_WHEEL_UP:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera_arm.spring_length = clamp(camera_arm.spring_length / (1.0 + camdist_zoom_speed), camdist_min, camdist_max)
-		if event.button_index == BUTTON_WHEEL_DOWN:
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			camera_arm.spring_length = clamp(camera_arm.spring_length * (1.0 + camdist_zoom_speed), camdist_min, camdist_max)
 
 	

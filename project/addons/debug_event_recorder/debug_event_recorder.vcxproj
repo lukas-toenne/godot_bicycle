@@ -281,7 +281,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)godot-cpp\godot-headers;$(SolutionDir)godot-cpp\include;$(SolutionDir)godot-cpp\include\core;$(SolutionDir)godot-cpp\include\gen;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)godot-cpp\godot-headers;$(SolutionDir)godot-cpp\include;$(SolutionDir)godot-cpp\gen\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
@@ -291,7 +291,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(SolutionDir)godot-cpp\godot-headers;$(SolutionDir)godot-cpp\include;$(SolutionDir)godot-cpp\include\core;$(SolutionDir)godot-cpp\include\gen;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)godot-cpp\godot-headers;$(SolutionDir)godot-cpp\include;$(SolutionDir)godot-cpp\gen\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
     <OutDir>bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>obj\$(Platform)\$(Configuration)\</IntDir>
@@ -515,6 +515,8 @@
       <PreprocessorDefinitions>NDEBUG;DEBUGEVENTRECORDER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/vmg /vmv %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -549,6 +551,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;DEBUGEVENTRECORDER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/vmg /vmv %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -556,12 +560,12 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>libgodot-cpp.windows.debug.64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libgodot-cpp.windows.release.64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\debug_event_recorder.cpp" />
-    <ClCompile Include="src\debug_event_recorder_gdlibrary.cpp" />
+    <ClCompile Include="src\debug_event_recorder_library.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\debug_event_recorder.h" />

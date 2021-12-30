@@ -1,10 +1,10 @@
 extends Control
 
-onready var _grid := $PanelContainer/ScrollContainer/GridContainer
+@onready var _grid := $PanelContainer/ScrollContainer/GridContainer
 
 var _need_reload := true
 
-var _tests = {
+var _tests := {
 	"Stand on plane": preload("res://test_vehicles/cases/case_stand_on_plane.tscn"),
 	"Inclined plane": preload("res://test_vehicles/cases/case_inclined_plane.tscn"),
 	"Fall from height": preload("res://test_vehicles/cases/case_stand_on_plane.tscn"),
@@ -15,7 +15,7 @@ var _tests = {
 	"Wall crash": preload("res://test_vehicles/cases/case_stand_on_plane.tscn"),
 }
 
-var _vehicles = {
+var _vehicles := {
 	"Car": preload("res://test_vehicles/vehicles/car.tscn"),
 	"Truck": preload("res://test_vehicles/vehicles/car.tscn"),
 	"Three-wheeler": preload("res://test_vehicles/vehicles/car.tscn"),
@@ -27,7 +27,7 @@ var _vehicles = {
 	"Skateboard": preload("res://test_vehicles/vehicles/car.tscn"),
 }
 
-var _environment = preload("res://test_vehicles/cases/test_environment.tres")
+var _environment := preload("res://test_vehicles/cases/test_environment.tres")
 
 
 func _ready():
@@ -46,7 +46,7 @@ func reload_tests():
 	for test_name in _tests:
 		var label = Label.new()
 		label.text = test_name
-		label.autowrap = true
+		label.autowrap_mode = Label.AUTOWRAP_WORD
 		_grid.add_child(label)
 
 	# Test worlds and viewports
@@ -58,15 +58,15 @@ func reload_tests():
 		_grid.add_child(label)
 
 		for test_name in _tests:
-			var vp_cont = ViewportContainer.new()
+			var vp_cont = SubViewportContainer.new()
 			_grid.add_child(vp_cont)
 
 			var vp = Viewport.new()
 			vp.size = Vector2(128, 128)
-			vp.own_world = true
+			vp.own_world_3d = true
 			vp_cont.add_child(vp)
 
-			var scene = _tests[test_name].instance()
+			var scene = _tests[test_name].instantiate()
 			assert(scene != null)
 			vp.add_child(scene)
 			
@@ -74,11 +74,11 @@ func reload_tests():
 			world_env.environment = _environment
 			scene.add_child(world_env)
 			
-			var camera = Camera.new()
+			var camera = Camera3D.new()
 			camera.look_at_from_position(Vector3(4, 3, 2), Vector3(0, 0, 0), Vector3(0, 1, 0))
 			scene.add_child(camera)
 
-			var vehicle = _vehicles[vehicle_name].instance()
+			var vehicle = _vehicles[vehicle_name].instantiate()
 			assert(vehicle != null)
 			vehicle.transform.origin = Vector3(0, 2, 0)
 			scene.add_child(vehicle)

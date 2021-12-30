@@ -1,6 +1,6 @@
-extends RigidBody
+extends RigidDynamicBody3D
 
-export(float) var lifetime = 1.0
+@export var lifetime := 1.0
 
 var _time := 0.0
 

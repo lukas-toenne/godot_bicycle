@@ -1,0 +1,8 @@
+﻿  debug_event_recorder.cpp
+  debug_event_recorder_library.cpp
+     Creating library bin\x64\Release\debug_event_recorder.lib and object bin\x64\Release\debug_event_recorder.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 616 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  debug_event_recorder.vcxproj -> C:\Users\lutnne\Documents\Godot\godot_bicycle\project\addons\debug_event_recorder\bin\x64\Release\debug_event_recorder.dll

@@ -1,18 +1,35 @@
 extends Node
 class_name VehicleController
 
-var vehicle: Bicycle setget ,_get_vehicle
+var vehicle: Bicycle:
+	get:
+		return vehicle
 
-export(float, -1.0, 1.0) var forward_movement = 0.0
-export(float) var side_movement = 0.0
-export(float) var turn = 0.0
-export(float) var brake = 0.0
-export(bool) var boost = false
+# XXX bug: negative values don't work in export_range
+# https://github.com/godotengine/godot/issues/41183
+#@export_range(-1.0, 1.0) var forward_movement := 0.0
+@export var forward_movement := 0.0
+@export var side_movement := 0.0
+@export var turn := 0.0
+@export var brake := 0.0
+@export var boost := false
 
+var forward_speed: float:
+	get:
+		return 0.0
 
-var forward_speed setget ,_get_forward_speed
-var forward_speed_fraction setget ,_get_forward_speed_fraction
-var forward_speed_range setget ,_get_forward_speed_range
+var forward_speed_fraction: float:
+	get:
+		var speed = forward_speed
+		var speed_range = forward_speed_range
+		if speed >= 0.0:
+			return speed / speed_range[1] if speed_range[1] > 0.0 else 0.0
+		else:
+			return speed / speed_range[0] if speed_range[0] < 0.0 else 0.0
+
+var forward_speed_range: Array[float]:
+	get:
+		return [-1.0, 1.0]
 
 # TODO lots more could be added here for AI navigation purposes
 
@@ -37,24 +54,3 @@ func exit_vehicle():
 	vehicle.controller = null
 	vehicle = null
 	return true
-
-
-func _get_vehicle():
-	return vehicle
-
-
-func _get_forward_speed():
-	return 0.0
-
-
-func _get_forward_speed_fraction():
-	var speed = _get_forward_speed()
-	var speed_range = _get_forward_speed_range()
-	if speed >= 0.0:
-		return speed / speed_range[1] if speed_range[1] > 0.0 else 0.0
-	else:
-		return speed / speed_range[0] if speed_range[0] < 0.0 else 0.0
-
-
-func _get_forward_speed_range():
-	return [-1.0, 1.0]

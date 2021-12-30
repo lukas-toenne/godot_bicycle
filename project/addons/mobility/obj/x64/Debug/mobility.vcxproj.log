@@ -1,5 +1,34 @@
-﻿  chassis.cpp
-  gdlibrary.cpp
-  wheel.cpp
-  Generating Code...
+﻿  wheel.cpp
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\method_bind.hpp(257,83): warning C4244: 'argument': conversion from 'const GDNativeInt' to 'int', possible loss of data
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\method_bind.hpp(253): message : while compiling class template member function 'godot::Variant godot::MethodBindT<float>::call(GDExtensionClassInstancePtr,const GDNativeVariantPtr *,const GDNativeInt,GDNativeCallError &) const'
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\method_bind.hpp(279): message : see reference to class template instantiation 'godot::MethodBindT<float>' being compiled
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\class_db.hpp(176): message : see reference to function template instantiation 'godot::MethodBind *godot::create_method_bind<godot::Wheel,float>(void (__cdecl godot::Wheel::* )(float))' being compiled
+C:\Users\lutnne\Documents\Godot\godot_bicycle\project\addons\mobility\src\wheel.cpp(9): message : see reference to function template instantiation 'godot::MethodBind *godot::ClassDB::bind_method<godot::MethodDefinition,void(__cdecl godot::Wheel::* )(float)>(N,M)' being compiled
+          with
+          [
+              N=godot::MethodDefinition,
+              M=void (__cdecl godot::Wheel::* )(float)
+          ]
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\method_bind.hpp(504,70): warning C4244: 'argument': conversion from 'const GDNativeInt' to 'int', possible loss of data
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\method_bind.hpp(499): message : while compiling class template member function 'godot::Variant godot::MethodBindTRC<R>::call(GDExtensionClassInstancePtr,const GDNativeVariantPtr *,const GDNativeInt,GDNativeCallError &) const'
+          with
+          [
+              R=float
+          ]
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\method_bind.hpp(527): message : see reference to class template instantiation 'godot::MethodBindTRC<R>' being compiled
+          with
+          [
+              R=float
+          ]
+C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\core\class_db.hpp(176): message : see reference to function template instantiation 'godot::MethodBind *godot::create_method_bind<godot::Wheel,float,>(R (__cdecl godot::Wheel::* )(void) const)' being compiled
+          with
+          [
+              R=float
+          ]
+C:\Users\lutnne\Documents\Godot\godot_bicycle\project\addons\mobility\src\wheel.cpp(8): message : see reference to function template instantiation 'godot::MethodBind *godot::ClassDB::bind_method<godot::MethodDefinition,float(__cdecl godot::Wheel::* )(void) const>(N,M)' being compiled
+          with
+          [
+              N=godot::MethodDefinition,
+              M=float (__cdecl godot::Wheel::* )(void) const
+          ]
   mobility.vcxproj.vcxproj -> C:\Users\lutnne\Documents\Godot\godot_bicycle\project\addons\mobility\bin\x64\Debug\mobility.dll
