@@ -1,0 +1,27 @@
+[gd_scene load_steps=3 format=3 uid="uid://c7kst7uxm1u3j"]
+
+[ext_resource type="PackedScene" uid="uid://cxc6jwofini6r" path="res://test_vehicles/assets/Beetle.glb" id="3"]
+
+[sub_resource type="BoxShape3D" id="1"]
+size = Vector3(0.42, 0.096, 0.696)
+
+[node name="Car" type="Chassis"]
+
+[node name="CollisionShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.106, 0.294)
+shape = SubResource( "1" )
+
+[node name="FrontLeftWheel" type="Wheel" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.751125, -0.107988, 1.85774)
+
+[node name="FrontRightWheel" type="Wheel" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75438, -0.107988, 1.85774)
+
+[node name="RearLeftWheel" type="Wheel" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.754, -0.11, -1.01)
+
+[node name="RearRightWheel" type="Wheel" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.75438, -0.109585, -1.00958)
+
+[node name="Beetle" parent="." instance=ExtResource( "3" )]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.483532, 0.384301)

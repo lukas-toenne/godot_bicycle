@@ -14,3 +14,9 @@ data_*/
 
 # Python
 __pycache__/**
+
+# Binary files
+project/addons/mobility/bin/**
+project/addons/mobility/obj/**
+project/addons/debug_event_recorder/bin/**
+project/addons/debug_event_recorder/obj/**

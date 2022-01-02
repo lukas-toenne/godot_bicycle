@@ -20,6 +20,7 @@ shape = SubResource( "1" )
 [node name="MeshInstance" type="MeshInstance3D" parent="StaticBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 mesh = SubResource( "2" )
+surface_material_override/0 = null
 
 [node name="DirectionalLight" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.859888, -0.376404, 0.344838, 0, 0.675513, 0.737348, -0.510483, -0.634037, 0.580865, 0, 3.10105, 0)

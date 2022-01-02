@@ -51,7 +51,7 @@ _global_script_class_icons={
 [application]
 
 config/name="Fiets"
-run/main_scene="res://test_vehicles/ui/test_selector.tscn"
+run/main_scene="res://test_vehicles/ui/test_selector2.tscn"
 config/icon="res://icon.png"
 config/features=PackedStringArray("4.0")
 
