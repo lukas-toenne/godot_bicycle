@@ -1,6 +1,7 @@
-[gd_scene load_steps=4 format=3 uid="uid://dos1cjsifbtkc"]
+[gd_scene load_steps=4 format=3]
 
-[ext_resource type="Material" uid="uid://c5l12wwn2qg6k" path="res://DefaultGround.material" id="1_qe87g"]
+[ext_resource type="Material" path="res://test_vehicles/cases/default_ground.material" id="1_qe87g"]
+
 
 [sub_resource type="BoxShape3D" id="1"]
 size = Vector3(20, 2, 20)

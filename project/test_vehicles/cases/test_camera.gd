@@ -1,6 +1,6 @@
 extends Camera3D
 
-const BallProbe = preload("res://addons/debug_event_recorder/BallProbe.tscn")
+const BallProbe = preload("res://test_vehicles/cases/test_ball.tscn")
 
 @export var start_paused := false
 

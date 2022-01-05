@@ -3,6 +3,7 @@
 .import/
 export.cfg
 export_presets.cfg
+project/.godot/shader_cache/**
 
 # Mono-specific ignores
 .mono/
@@ -20,3 +21,7 @@ project/addons/mobility/bin/**
 project/addons/mobility/obj/**
 project/addons/debug_event_recorder/bin/**
 project/addons/debug_event_recorder/obj/**
+!project/addons/mobility/bin/.gdignore
+!project/addons/mobility/obj/.gdignore
+!project/addons/debug_event_recorder/bin/.gdignore
+!project/addons/debug_event_recorder/obj/.gdignore

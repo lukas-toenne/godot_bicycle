@@ -1,6 +1,0 @@
-﻿  chassis.cpp
-C:\Users\lutnne\Documents\Godot\godot_bicycle\project\addons\mobility\src\chassis.h(3,10): fatal error C1083: Cannot open include file: 'godot_cpp/classes/physics_direct_body_state3d.hpp': No such file or directory
-  mobility_library.cpp
-C:\Users\lutnne\Documents\Godot\godot_bicycle\godot-cpp\include\godot_cpp\variant\variant.hpp(36,10): fatal error C1083: Cannot open include file: 'godot_cpp/variant/builtin_types.hpp': No such file or directory
-  wheel.cpp
-C:\Users\lutnne\Documents\Godot\godot_bicycle\project\addons\mobility\src\wheel.h(3,10): fatal error C1083: Cannot open include file: 'godot_cpp/classes/node3d.hpp': No such file or directory

@@ -24,11 +24,6 @@ _global_script_classes=[{
 "language": &"GDScript",
 "path": "res://addons/debug_event_recorder/DebugVector.gd"
 }, {
-"base": "Camera3D",
-"class": &"FlyCamera",
-"language": &"GDScript",
-"path": "res://addons/debug_event_recorder/FlyCamera.gd"
-}, {
 "base": "VehicleController",
 "class": &"PlayerController",
 "language": &"GDScript",
@@ -43,7 +38,6 @@ _global_script_class_icons={
 "Bicycle": "",
 "BicycleWheel": "",
 "DebugVector": "",
-"FlyCamera": "",
 "PlayerController": "",
 "VehicleController": ""
 }
@@ -51,7 +45,7 @@ _global_script_class_icons={
 [application]
 
 config/name="Fiets"
-run/main_scene="res://test_vehicles/ui/test_selector2.tscn"
+run/main_scene="res://test_vehicles/ui/test_selector.tscn"
 config/icon="res://icon.png"
 config/features=PackedStringArray("4.0")
 
