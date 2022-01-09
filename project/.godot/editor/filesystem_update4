@@ -1,4 +1,4 @@
-res://DefaultGround.material
-res://addons/bicycle/VehicleController.gd
-res://test_vehicles/cases/test_camera.gd
+res://addons/bicycle/Bicycle.gd
+res://test_vehicles/ui/test_selector.gd
 res://test_vehicles/ui/test_selector.tscn
+res://test_vehicles/vehicles/car.tscn

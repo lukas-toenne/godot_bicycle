@@ -16,7 +16,7 @@ var _tests := {
 }
 
 var _vehicles := {
-	"Car": preload("res://test_vehicles/vehicles/car_cpp.tscn"),
+	"Car": preload("res://test_vehicles/vehicles/car.tscn"),
 	"Truck": preload("res://test_vehicles/vehicles/car.tscn"),
 	"Three-wheeler": preload("res://test_vehicles/vehicles/car.tscn"),
 	"Bulldozer": preload("res://test_vehicles/vehicles/car.tscn"),

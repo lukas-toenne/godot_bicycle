@@ -64,9 +64,20 @@ public:
 	void remove_wheel(Wheel* wheel);
 
 protected:
+	void build_constraints(PhysicsDirectBodyState3D* state);
 	void ray_cast_wheel(PhysicsDirectBodyState3D* state, WheelInfo& info);
-	void solve_constraints(PhysicsDirectBodyState3D* state);
-	float resolve_single_constraint(WheelConstraint& constraint);
+	void sort_constraints();
+
+	void solve_velocity_constraints(PhysicsDirectBodyState3D* state, bool is_first_step);
+	void solve_position_constraints(PhysicsDirectBodyState3D* state, bool is_first_step);
+
+	void warm_start_velocity_constraints(PhysicsDirectBodyState3D* state);
+	float resolve_single_velocity_constraint(WheelConstraint& constraint);
+	float resolve_single_position_constraint(WheelConstraint& constraint);
+
+	void integrate_velocity(PhysicsDirectBodyState3D* state);
+
+	void store_applied_impulses();
 
 private:
 	std::vector<WheelInfo> m_wheels;

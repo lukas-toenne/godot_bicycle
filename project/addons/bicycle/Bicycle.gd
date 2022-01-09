@@ -111,7 +111,7 @@ func _physics_process(delta):
 
 func _integrate_forces(state):
 	_ray_cast_wheels(state)
-	_update_wheel_constraints(state)
+#	_update_wheel_constraints(state)
 	_compute_wheel_torque(state)
 #	_solve_wheel_constraints(state)
 #	_update_wheel_rotation(state)

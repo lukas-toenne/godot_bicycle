@@ -22,54 +22,23 @@ Chassis::~Chassis() {
 
 void Chassis::_integrate_forces(PhysicsDirectBodyState3D* state)
 {
-}
+	const int collision_steps = 1;
+	const int integration_steps = 4;
 
-void Chassis::solve_constraints(PhysicsDirectBodyState3D* state)
-{
-	const float least_squares_residual_threshold = 0.001f;
-
-	m_body_solutions.clear();
-	
-	int max_iterations = 50;
-	for (int iteration = 0; iteration < max_iterations; ++iteration)
+	for (int step = 0; step < collision_steps; ++step)
 	{
-		//	print("  iteration ", iteration)
-		float least_squares_residual = 0.0;
-		for (WheelConstraint& constraint : m_constraints)
+		// Build and solve constraints for wheel contacts
+		build_constraints(state);
+		for (int sub_step = 0; sub_step < integration_steps; ++sub_step)
 		{
-			float residual = resolve_single_constraint(constraint);
-			least_squares_residual = std::max(least_squares_residual, residual * residual);
-			//print("wheel ", wheel_array[k], " residual=", residual)
-			//print("  wheel ", wheel, " total lambda", total_lambda[k])
+			solve_velocity_constraints(state, sub_step == 0);
+			integrate_velocity(state);
+			solve_position_constraints(state, sub_step == 0);
 		}
 
-		//DebugEventRecorder.record_vector(self, "impulse" + str(wheel), state.transform.origin, state.angular_velocity)
-		if (least_squares_residual <= least_squares_residual_threshold)
-		{
-			//print("%d iterations, residual=%f" % [iteration + 1, least_squares_residual])
-			break;
-		}
-
-		if (iteration == max_iterations + 1)
-		{
-			//print("MAX ITERATIONS REACHED")
-		}
-
-		auto iter = m_body_solutions.find(get_rid());
-		if (iter != m_body_solutions.end())
-		{
-			BodySolution& solA = iter->second;
-			state->set_linear_velocity(state->get_linear_velocity() + solA.delta_vel);
-			state->set_angular_velocity(state->get_angular_velocity() + solA.delta_rot);
-			//DebugEventRecorder.record_vector(self, "linear_impulse", state.transform.origin, body_solutions[get_rid()].delta_vel)
-			//DebugEventRecorder.record_vector(self, "angular_impulse", state.transform.origin, body_solutions[get_rid()].delta_rot)
-		}
+		// Store lambdas for warm start in the next update.
+		store_applied_impulses();
 	}
-}
-
-float Chassis::resolve_single_constraint(WheelConstraint& constraint)
-{
-	return 0.0f;
 }
 
 void Chassis::add_wheel(Wheel* wheel)
@@ -100,6 +69,11 @@ void Chassis::remove_wheel(Wheel* wheel)
 	}
 
 	m_wheels = new_wheels;
+}
+
+void Chassis::build_constraints(PhysicsDirectBodyState3D* state)
+{
+
 }
 
 void Chassis::ray_cast_wheel(PhysicsDirectBodyState3D* state, Chassis::WheelInfo& info)
@@ -146,32 +120,97 @@ void Chassis::ray_cast_wheel(PhysicsDirectBodyState3D* state, Chassis::WheelInfo
 
 		//DebugEventRecorder.record_vector(wheel, "contact_velocity", info.contact_point, info.relative_contact_velocity)
 		//DebugEventRecorder.record_vector(wheel, "contact_velocity", info.contact_point, info.contact_normal * info.suspension_relative_velocity)
+	}
+}
 
-		if (info.is_in_contact)
+void Chassis::sort_constraints()
+{
+
+}
+
+void Chassis::solve_velocity_constraints(PhysicsDirectBodyState3D* state, bool is_first_step)
+{
+	if (is_first_step)
+	{
+		sort_constraints();
+	}
+
+	// Gravity, drag, external forces
+	//apply_gravity();
+	//apply_drag();
+	//apply_forces();
+
+	warm_start_velocity_constraints(state);
+
+	const int velocity_steps = 2;
+	for (int vstep = 0; vstep < velocity_steps; ++vstep)
+	{
+
+	}
+
+
+	const float least_squares_residual_threshold = 0.001f;
+
+	m_body_solutions.clear();
+	
+	int max_iterations = 50;
+	for (int iteration = 0; iteration < max_iterations; ++iteration)
+	{
+		//	print("  iteration ", iteration)
+		float least_squares_residual = 0.0;
+		for (WheelConstraint& constraint : m_constraints)
 		{
-			//DebugEventRecorder.record_spring(wheel, "suspension", info.hard_point, info.wheel_direction, wheel.rest_length, info.suspension_length)
-			//	#			print("Wheel {wheel} in contact: ground={ground}, point={point}, normal={normal}, suspension={suslen}, rel.vel.={relvel}, proj.suspension={invproj}".format({
-			//	#				"wheel":wheel,
-			//	#				"ground":info.ground_object,
-			//	#				"point":info.contact_point,
-			//	#				"normal":info.contact_normal,
-			//	#				"suslen":info.suspension_length,
-			//	#				"relvel":info.suspension_relative_velocity,
-			//	#				"invproj":info.clipped_inv_contact_dot_suspension,
-			//	#				}))
+			float residual = resolve_single_velocity_constraint(constraint);
+			least_squares_residual = std::max(least_squares_residual, residual * residual);
+			//print("wheel ", wheel_array[k], " residual=", residual)
+			//print("  wheel ", wheel, " total lambda", total_lambda[k])
 		}
-		else
+
+		//DebugEventRecorder.record_vector(self, "impulse" + str(wheel), state.transform.origin, state.angular_velocity)
+		if (least_squares_residual <= least_squares_residual_threshold)
 		{
-			//DebugEventRecorder.clear_event(wheel, "suspension")
-			//	#			print("Wheel {wheel} free [ground={ground}, point={point}, normal={normal}, suspension={suslen}, rel.vel.={relvel}, proj.suspension={invproj}]".format({
-			//	#				"wheel":wheel,
-			//	#				"ground":info.ground_object,
-			//	#				"point":info.contact_point,
-			//	#				"normal":info.contact_normal,
-			//	#				"suslen":info.suspension_length,
-			//	#				"relvel":info.suspension_relative_velocity,
-			//	#				"invproj":info.clipped_inv_contact_dot_suspension,
-			//	#				}))
+			//print("%d iterations, residual=%f" % [iteration + 1, least_squares_residual])
+			break;
+		}
+
+		if (iteration == max_iterations + 1)
+		{
+			//print("MAX ITERATIONS REACHED")
+		}
+
+		auto iter = m_body_solutions.find(get_rid());
+		if (iter != m_body_solutions.end())
+		{
+			BodySolution& solA = iter->second;
+			state->set_linear_velocity(state->get_linear_velocity() + solA.delta_vel);
+			state->set_angular_velocity(state->get_angular_velocity() + solA.delta_rot);
+			//DebugEventRecorder.record_vector(self, "linear_impulse", state.transform.origin, body_solutions[get_rid()].delta_vel)
+			//DebugEventRecorder.record_vector(self, "angular_impulse", state.transform.origin, body_solutions[get_rid()].delta_rot)
 		}
 	}
+}
+
+void Chassis::solve_position_constraints(PhysicsDirectBodyState3D* state, bool is_first_step)
+{
+
+}
+
+float Chassis::resolve_single_velocity_constraint(WheelConstraint& constraint)
+{
+	return 0.0f;
+}
+
+float Chassis::resolve_single_position_constraint(WheelConstraint& constraint)
+{
+	return 0.0f;
+}
+
+void Chassis::integrate_velocity(PhysicsDirectBodyState3D* state)
+{
+
+}
+
+void Chassis::store_applied_impulses()
+{
+
 }
